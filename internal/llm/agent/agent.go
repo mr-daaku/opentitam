@@ -707,7 +707,10 @@ func createAgentProvider(agentName config.AgentName) (provider.Provider, error) 
 	cfg := config.Get()
 	agentConfig, ok := cfg.Agents[agentName]
 	if !ok {
-		return nil, fmt.Errorf("agent %s not found", agentName)
+		return nil, fmt.Errorf(
+			"agent %s not found: no model configured — set OPENTITAM_API_KEY (and optionally OPENTITAM_API_MODEL) for the remote API, or LOCAL_ENDPOINT for a local server",
+			agentName,
+		)
 	}
 	model, ok := models.SupportedModels[agentConfig.Model]
 	if !ok {
@@ -731,7 +734,7 @@ func createAgentProvider(agentName config.AgentName) (provider.Provider, error) 
 		provider.WithSystemMessage(prompt.GetAgentPrompt(agentName, model.Provider)),
 		provider.WithMaxTokens(maxTokens),
 	}
-	if model.Provider == models.ProviderLocal && model.CanReason {
+	if model.CanReason {
 		opts = append(
 			opts,
 			provider.WithOpenAIOptions(

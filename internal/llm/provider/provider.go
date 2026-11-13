@@ -79,15 +79,27 @@ type baseProvider[C ProviderClient] struct {
 	client  C
 }
 
-// NewProvider returns a provider for the given name. This build only supports
-// the local provider, which talks to an OpenAI-compatible endpoint pointed at
-// by the LOCAL_ENDPOINT environment variable.
+// NewProvider returns a provider for the given name. This build supports two
+// providers:
+//
+//   - "api":  a remote OpenAI-compatible API (for example build.nvidia.com),
+//     configured through OPENTITAM_API_KEY / OPENTITAM_API_BASE_URL.
+//   - "local": an OpenAI-compatible endpoint pointed at by the LOCAL_ENDPOINT
+//     environment variable.
 func NewProvider(providerName models.ModelProvider, opts ...ProviderClientOption) (Provider, error) {
 	clientOptions := providerClientOptions{}
 	for _, o := range opts {
 		o(&clientOptions)
 	}
 	switch providerName {
+	case models.ProviderAPI:
+		clientOptions.openaiOptions = append(clientOptions.openaiOptions,
+			WithOpenAIBaseURL(models.APIBaseURL()),
+		)
+		return &baseProvider[OpenAIClient]{
+			options: clientOptions,
+			client:  newOpenAIClient(clientOptions),
+		}, nil
 	case models.ProviderLocal:
 		endpoint := os.Getenv("LOCAL_ENDPOINT")
 		if endpoint == "" {

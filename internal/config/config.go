@@ -249,11 +249,38 @@ func setDefaults(debug bool) {
 	}
 }
 
-// setProviderDefaults configures the local LLM provider. The only supported
-// provider is "local", which talks to an OpenAI-compatible server reachable at
-// LOCAL_ENDPOINT (for example Ollama or LM Studio).
+// setProviderDefaults configures the LLM providers. Two providers exist in
+// this build:
+//
+//   - "api":  a remote OpenAI-compatible API (for example build.nvidia.com),
+//     configured through OPENTITAM_API_KEY / OPENTITAM_API_BASE_URL /
+//     OPENTITAM_API_MODEL.
+//   - "local": an OpenAI-compatible server reachable at LOCAL_ENDPOINT
+//     (for example Ollama or LM Studio).
+//
+// When both are configured the remote API wins.
 func setProviderDefaults() {
 	viper.SetDefault("providers.local.apiKey", "dummy")
+
+	if apiKey := models.APIKey(); apiKey != "" {
+		viper.SetDefault("providers.api.apiKey", apiKey)
+		if id, ok := defaultAPIModel(); ok {
+			viper.SetDefault("agents.coder.model", id)
+			viper.SetDefault("agents.summarizer.model", id)
+			viper.SetDefault("agents.task.model", id)
+			viper.SetDefault("agents.title.model", id)
+		}
+	}
+}
+
+// defaultAPIModel returns the registered remote API model, if any.
+func defaultAPIModel() (models.ModelID, bool) {
+	for id, model := range models.SupportedModels {
+		if model.Provider == models.ProviderAPI {
+			return id, true
+		}
+	}
+	return "", false
 }
 
 // readConfig handles the result of reading a configuration file.
@@ -383,7 +410,7 @@ func validateAgent(cfg *Config, name AgentName, agent Agent) error {
 	}
 
 	// Validate reasoning effort for models that support reasoning
-	if provider == models.ProviderLocal && model.CanReason {
+	if model.CanReason {
 		if agent.ReasoningEffort == "" {
 			// Set default reasoning effort for models that support it
 			logging.Info("setting default reasoning effort for model that supports reasoning",
@@ -460,25 +487,36 @@ func Validate() error {
 	return nil
 }
 
-// getProviderAPIKey gets the API key for a provider. Only the local provider
-// exists in this build and it does not need a real key.
+// getProviderAPIKey gets the API key for a provider. The local provider does
+// not need a real key; the remote API provider reads OPENTITAM_API_KEY.
 func getProviderAPIKey(provider models.ModelProvider) string {
-	if provider == models.ProviderLocal {
+	switch provider {
+	case models.ProviderLocal:
 		return "dummy"
+	case models.ProviderAPI:
+		return models.APIKey()
 	}
 	return ""
 }
 
-// defaultLocalModel picks a sensible local model for an agent, preferring an
-// already-loaded model when the local server reports one.
-func defaultLocalModel(agent AgentName) (models.ModelID, int64, bool) {
+// defaultModel picks a sensible model for an agent: the configured remote API
+// model first, then a model the local server reports as loaded, then any
+// other local model.
+func defaultModel(agent AgentName) (models.ModelID, int64, bool) {
 	maxTokens := int64(5000)
 	if agent == AgentTitle {
 		maxTokens = 80
 	}
 
-	// Prefer a model the local server has loaded, otherwise take the first
-	// one it advertised.
+	// The remote API model wins when it is configured.
+	for id, model := range models.SupportedModels {
+		if model.Provider == models.ProviderAPI {
+			return id, maxTokens, true
+		}
+	}
+
+	// Otherwise prefer a model the local server has loaded, otherwise take
+	// the first one it advertised.
 	var fallback models.ModelID
 	var loaded models.ModelID
 	for id, model := range models.SupportedModels {
@@ -504,10 +542,10 @@ func defaultLocalModel(agent AgentName) (models.ModelID, int64, bool) {
 	return pick, maxTokens, true
 }
 
-// setDefaultModelForAgent sets a default model for an agent from the local
-// provider.
+// setDefaultModelForAgent sets a default model for an agent from the
+// available providers (remote API first, local second).
 func setDefaultModelForAgent(agent AgentName) bool {
-	model, maxTokens, ok := defaultLocalModel(agent)
+	model, maxTokens, ok := defaultModel(agent)
 	if !ok {
 		return false
 	}

@@ -193,6 +193,7 @@ func generateSchema() map[string]any {
 	// Add known providers
 	knownProviders := []string{
 		string(models.ProviderLocal),
+		string(models.ProviderAPI),
 	}
 
 	providerSchema["additionalProperties"].(map[string]any)["properties"].(map[string]any)["provider"] = map[string]any{

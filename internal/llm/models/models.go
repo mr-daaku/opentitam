@@ -25,10 +25,11 @@ const (
 	ProviderMock ModelProvider = "__mock"
 )
 
-// ProviderPopularity orders providers for display; only local models are
-// supported in this build.
+// ProviderPopularity orders providers for display. This build supports a
+// remote OpenAI-compatible API ("api") and a local server ("local").
 var ProviderPopularity = map[ModelProvider]int{
 	ProviderLocal: 0,
+	ProviderAPI:   0,
 }
 
 // SupportedModels is populated at init time from the local endpoint. See
