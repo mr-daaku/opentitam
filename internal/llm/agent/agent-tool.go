@@ -5,11 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/opencode-ai/opencode/internal/config"
-	"github.com/opencode-ai/opencode/internal/llm/tools"
-	"github.com/opencode-ai/opencode/internal/lsp"
-	"github.com/opencode-ai/opencode/internal/message"
-	"github.com/opencode-ai/opencode/internal/session"
+	"github.com/opentitam-ai/opentitam/internal/config"
+	"github.com/opentitam-ai/opentitam/internal/llm/tools"
+	"github.com/opentitam-ai/opentitam/internal/lsp"
+	"github.com/opentitam-ai/opentitam/internal/message"
+	"github.com/opentitam-ai/opentitam/internal/session"
 )
 
 type agentTool struct {

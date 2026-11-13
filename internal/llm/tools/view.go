@@ -10,9 +10,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/opencode-ai/opencode/internal/config"
-	"github.com/opencode-ai/opencode/internal/logging"
-	"github.com/opencode-ai/opencode/internal/lsp"
+	"github.com/opentitam-ai/opentitam/internal/config"
+	"github.com/opentitam-ai/opentitam/internal/logging"
+	"github.com/opentitam-ai/opentitam/internal/lsp"
 )
 
 type ViewParams struct {

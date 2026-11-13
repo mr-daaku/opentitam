@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/opencode-ai/opencode/internal/config"
-	"github.com/opencode-ai/opencode/internal/llm/models"
+	"github.com/opentitam-ai/opentitam/internal/config"
+	"github.com/opentitam-ai/opentitam/internal/llm/models"
 )
 
 // JSONSchemaType represents a JSON Schema type
@@ -38,8 +38,8 @@ func main() {
 func generateSchema() map[string]any {
 	schema := map[string]any{
 		"$schema":     "http://json-schema.org/draft-07/schema#",
-		"title":       "OpenCode Configuration",
-		"description": "Configuration schema for the OpenCode application",
+		"title":       "OpenTitam Configuration",
+		"description": "Configuration schema for the OpenTitam application",
 		"type":        "object",
 		"properties":  map[string]any{},
 	}
@@ -52,7 +52,7 @@ func generateSchema() map[string]any {
 			"directory": map[string]any{
 				"type":        "string",
 				"description": "Directory where application data is stored",
-				"default":     ".opencode",
+				"default":     ".opentitam",
 			},
 		},
 		"required": []string{"directory"},
@@ -89,12 +89,12 @@ func generateSchema() map[string]any {
 			".cursor/rules/",
 			"CLAUDE.md",
 			"CLAUDE.local.md",
-			"opencode.md",
-			"opencode.local.md",
-			"OpenCode.md",
-			"OpenCode.local.md",
-			"OPENCODE.md",
-			"OPENCODE.local.md",
+			"opentitam.md",
+			"opentitam.local.md",
+			"OpenTitam.md",
+			"OpenTitam.local.md",
+			"OPENTITAM.md",
+			"OPENTITAM.local.md",
 		},
 	}
 
@@ -105,9 +105,9 @@ func generateSchema() map[string]any {
 			"theme": map[string]any{
 				"type":        "string",
 				"description": "TUI theme name",
-				"default":     "opencode",
+				"default":     "opentitam",
 				"enum": []string{
-					"opencode",
+					"opentitam",
 					"catppuccin",
 					"dracula",
 					"flexoki",
@@ -192,14 +192,7 @@ func generateSchema() map[string]any {
 
 	// Add known providers
 	knownProviders := []string{
-		string(models.ProviderAnthropic),
-		string(models.ProviderOpenAI),
-		string(models.ProviderGemini),
-		string(models.ProviderGROQ),
-		string(models.ProviderOpenRouter),
-		string(models.ProviderBedrock),
-		string(models.ProviderAzure),
-		string(models.ProviderVertexAI),
+		string(models.ProviderLocal),
 	}
 
 	providerSchema["additionalProperties"].(map[string]any)["properties"].(map[string]any)["provider"] = map[string]any{

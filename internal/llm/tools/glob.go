@@ -10,9 +10,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/opencode-ai/opencode/internal/config"
-	"github.com/opencode-ai/opencode/internal/fileutil"
-	"github.com/opencode-ai/opencode/internal/logging"
+	"github.com/opentitam-ai/opentitam/internal/config"
+	"github.com/opentitam-ai/opentitam/internal/fileutil"
+	"github.com/opentitam-ai/opentitam/internal/logging"
 )
 
 const (

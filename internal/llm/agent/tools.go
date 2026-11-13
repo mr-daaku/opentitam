@@ -3,12 +3,12 @@ package agent
 import (
 	"context"
 
-	"github.com/opencode-ai/opencode/internal/history"
-	"github.com/opencode-ai/opencode/internal/llm/tools"
-	"github.com/opencode-ai/opencode/internal/lsp"
-	"github.com/opencode-ai/opencode/internal/message"
-	"github.com/opencode-ai/opencode/internal/permission"
-	"github.com/opencode-ai/opencode/internal/session"
+	"github.com/opentitam-ai/opentitam/internal/history"
+	"github.com/opentitam-ai/opentitam/internal/llm/tools"
+	"github.com/opentitam-ai/opentitam/internal/lsp"
+	"github.com/opentitam-ai/opentitam/internal/message"
+	"github.com/opentitam-ai/opentitam/internal/permission"
+	"github.com/opentitam-ai/opentitam/internal/session"
 )
 
 func CoderAgentTools(
@@ -27,11 +27,9 @@ func CoderAgentTools(
 		[]tools.BaseTool{
 			tools.NewBashTool(permissions),
 			tools.NewEditTool(lspClients, permissions, history),
-			tools.NewFetchTool(permissions),
 			tools.NewGlobTool(),
 			tools.NewGrepTool(),
 			tools.NewLsTool(),
-			tools.NewSourcegraphTool(),
 			tools.NewViewTool(lspClients),
 			tools.NewPatchTool(lspClients, permissions, history),
 			tools.NewWriteTool(lspClients, permissions, history),
@@ -45,7 +43,6 @@ func TaskAgentTools(lspClients map[string]*lsp.Client) []tools.BaseTool {
 		tools.NewGlobTool(),
 		tools.NewGrepTool(),
 		tools.NewLsTool(),
-		tools.NewSourcegraphTool(),
 		tools.NewViewTool(lspClients),
 	}
 }

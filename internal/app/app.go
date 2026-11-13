@@ -9,17 +9,17 @@ import (
 	"sync"
 	"time"
 
-	"github.com/opencode-ai/opencode/internal/config"
-	"github.com/opencode-ai/opencode/internal/db"
-	"github.com/opencode-ai/opencode/internal/format"
-	"github.com/opencode-ai/opencode/internal/history"
-	"github.com/opencode-ai/opencode/internal/llm/agent"
-	"github.com/opencode-ai/opencode/internal/logging"
-	"github.com/opencode-ai/opencode/internal/lsp"
-	"github.com/opencode-ai/opencode/internal/message"
-	"github.com/opencode-ai/opencode/internal/permission"
-	"github.com/opencode-ai/opencode/internal/session"
-	"github.com/opencode-ai/opencode/internal/tui/theme"
+	"github.com/opentitam-ai/opentitam/internal/config"
+	"github.com/opentitam-ai/opentitam/internal/db"
+	"github.com/opentitam-ai/opentitam/internal/format"
+	"github.com/opentitam-ai/opentitam/internal/history"
+	"github.com/opentitam-ai/opentitam/internal/llm/agent"
+	"github.com/opentitam-ai/opentitam/internal/logging"
+	"github.com/opentitam-ai/opentitam/internal/lsp"
+	"github.com/opentitam-ai/opentitam/internal/message"
+	"github.com/opentitam-ai/opentitam/internal/permission"
+	"github.com/opentitam-ai/opentitam/internal/session"
+	"github.com/opentitam-ai/opentitam/internal/tui/theme"
 )
 
 type App struct {

@@ -7,12 +7,12 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/opencode-ai/opencode/internal/logging"
-	"github.com/opencode-ai/opencode/internal/pubsub"
-	"github.com/opencode-ai/opencode/internal/tui/layout"
-	"github.com/opencode-ai/opencode/internal/tui/styles"
-	"github.com/opencode-ai/opencode/internal/tui/theme"
-	"github.com/opencode-ai/opencode/internal/tui/util"
+	"github.com/opentitam-ai/opentitam/internal/logging"
+	"github.com/opentitam-ai/opentitam/internal/pubsub"
+	"github.com/opentitam-ai/opentitam/internal/tui/layout"
+	"github.com/opentitam-ai/opentitam/internal/tui/styles"
+	"github.com/opentitam-ai/opentitam/internal/tui/theme"
+	"github.com/opentitam-ai/opentitam/internal/tui/util"
 )
 
 type TableComponent interface {

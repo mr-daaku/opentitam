@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/opencode-ai/opencode/internal/llm/models"
-	"github.com/opencode-ai/opencode/internal/llm/tools"
-	"github.com/opencode-ai/opencode/internal/message"
+	"github.com/opentitam-ai/opentitam/internal/llm/models"
+	"github.com/opentitam-ai/opentitam/internal/llm/tools"
+	"github.com/opentitam-ai/opentitam/internal/message"
 )
 
 type EventType string
@@ -64,11 +64,7 @@ type providerClientOptions struct {
 	maxTokens     int64
 	systemMessage string
 
-	anthropicOptions []AnthropicOption
-	openaiOptions    []OpenAIOption
-	geminiOptions    []GeminiOption
-	bedrockOptions   []BedrockOption
-	copilotOptions   []CopilotOption
+	openaiOptions []OpenAIOption
 }
 
 type ProviderClientOption func(*providerClientOptions)
@@ -83,78 +79,22 @@ type baseProvider[C ProviderClient] struct {
 	client  C
 }
 
+// NewProvider returns a provider for the given name. This build only supports
+// the local provider, which talks to an OpenAI-compatible endpoint pointed at
+// by the LOCAL_ENDPOINT environment variable.
 func NewProvider(providerName models.ModelProvider, opts ...ProviderClientOption) (Provider, error) {
 	clientOptions := providerClientOptions{}
 	for _, o := range opts {
 		o(&clientOptions)
 	}
 	switch providerName {
-	case models.ProviderCopilot:
-		return &baseProvider[CopilotClient]{
-			options: clientOptions,
-			client:  newCopilotClient(clientOptions),
-		}, nil
-	case models.ProviderAnthropic:
-		return &baseProvider[AnthropicClient]{
-			options: clientOptions,
-			client:  newAnthropicClient(clientOptions),
-		}, nil
-	case models.ProviderOpenAI:
-		return &baseProvider[OpenAIClient]{
-			options: clientOptions,
-			client:  newOpenAIClient(clientOptions),
-		}, nil
-	case models.ProviderGemini:
-		return &baseProvider[GeminiClient]{
-			options: clientOptions,
-			client:  newGeminiClient(clientOptions),
-		}, nil
-	case models.ProviderBedrock:
-		return &baseProvider[BedrockClient]{
-			options: clientOptions,
-			client:  newBedrockClient(clientOptions),
-		}, nil
-	case models.ProviderGROQ:
-		clientOptions.openaiOptions = append(clientOptions.openaiOptions,
-			WithOpenAIBaseURL("https://api.groq.com/openai/v1"),
-		)
-		return &baseProvider[OpenAIClient]{
-			options: clientOptions,
-			client:  newOpenAIClient(clientOptions),
-		}, nil
-	case models.ProviderAzure:
-		return &baseProvider[AzureClient]{
-			options: clientOptions,
-			client:  newAzureClient(clientOptions),
-		}, nil
-	case models.ProviderVertexAI:
-		return &baseProvider[VertexAIClient]{
-			options: clientOptions,
-			client:  newVertexAIClient(clientOptions),
-		}, nil
-	case models.ProviderOpenRouter:
-		clientOptions.openaiOptions = append(clientOptions.openaiOptions,
-			WithOpenAIBaseURL("https://openrouter.ai/api/v1"),
-			WithOpenAIExtraHeaders(map[string]string{
-				"HTTP-Referer": "opencode.ai",
-				"X-Title":      "OpenCode",
-			}),
-		)
-		return &baseProvider[OpenAIClient]{
-			options: clientOptions,
-			client:  newOpenAIClient(clientOptions),
-		}, nil
-	case models.ProviderXAI:
-		clientOptions.openaiOptions = append(clientOptions.openaiOptions,
-			WithOpenAIBaseURL("https://api.x.ai/v1"),
-		)
-		return &baseProvider[OpenAIClient]{
-			options: clientOptions,
-			client:  newOpenAIClient(clientOptions),
-		}, nil
 	case models.ProviderLocal:
+		endpoint := os.Getenv("LOCAL_ENDPOINT")
+		if endpoint == "" {
+			return nil, fmt.Errorf("local provider requires the LOCAL_ENDPOINT environment variable")
+		}
 		clientOptions.openaiOptions = append(clientOptions.openaiOptions,
-			WithOpenAIBaseURL(os.Getenv("LOCAL_ENDPOINT")),
+			WithOpenAIBaseURL(endpoint),
 		)
 		return &baseProvider[OpenAIClient]{
 			options: clientOptions,
@@ -216,32 +156,8 @@ func WithSystemMessage(systemMessage string) ProviderClientOption {
 	}
 }
 
-func WithAnthropicOptions(anthropicOptions ...AnthropicOption) ProviderClientOption {
-	return func(options *providerClientOptions) {
-		options.anthropicOptions = anthropicOptions
-	}
-}
-
 func WithOpenAIOptions(openaiOptions ...OpenAIOption) ProviderClientOption {
 	return func(options *providerClientOptions) {
 		options.openaiOptions = openaiOptions
-	}
-}
-
-func WithGeminiOptions(geminiOptions ...GeminiOption) ProviderClientOption {
-	return func(options *providerClientOptions) {
-		options.geminiOptions = geminiOptions
-	}
-}
-
-func WithBedrockOptions(bedrockOptions ...BedrockOption) ProviderClientOption {
-	return func(options *providerClientOptions) {
-		options.bedrockOptions = bedrockOptions
-	}
-}
-
-func WithCopilotOptions(copilotOptions ...CopilotOption) ProviderClientOption {
-	return func(options *providerClientOptions) {
-		options.copilotOptions = copilotOptions
 	}
 }

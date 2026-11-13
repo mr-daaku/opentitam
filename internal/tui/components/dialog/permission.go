@@ -8,13 +8,13 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/opencode-ai/opencode/internal/diff"
-	"github.com/opencode-ai/opencode/internal/llm/tools"
-	"github.com/opencode-ai/opencode/internal/permission"
-	"github.com/opencode-ai/opencode/internal/tui/layout"
-	"github.com/opencode-ai/opencode/internal/tui/styles"
-	"github.com/opencode-ai/opencode/internal/tui/theme"
-	"github.com/opencode-ai/opencode/internal/tui/util"
+	"github.com/opentitam-ai/opentitam/internal/diff"
+	"github.com/opentitam-ai/opentitam/internal/llm/tools"
+	"github.com/opentitam-ai/opentitam/internal/permission"
+	"github.com/opentitam-ai/opentitam/internal/tui/layout"
+	"github.com/opentitam-ai/opentitam/internal/tui/styles"
+	"github.com/opentitam-ai/opentitam/internal/tui/theme"
+	"github.com/opentitam-ai/opentitam/internal/tui/util"
 )
 
 type PermissionAction string
@@ -260,10 +260,7 @@ func (p *permissionDialogCmp) renderHeader() string {
 			),
 			baseStyle.Render(strings.Repeat(" ", p.width)),
 		)
-	case tools.FetchToolName:
-		headerParts = append(headerParts, baseStyle.Foreground(t.TextMuted()).Width(p.width).Bold(true).Render("URL"))
 	}
-
 	return lipgloss.NewStyle().Background(t.Background()).Render(lipgloss.JoinVertical(lipgloss.Left, headerParts...))
 }
 
@@ -322,29 +319,6 @@ func (p *permissionDialogCmp) renderWriteContent() string {
 		})
 
 		p.contentViewPort.SetContent(diff)
-		return p.styleViewport()
-	}
-	return ""
-}
-
-func (p *permissionDialogCmp) renderFetchContent() string {
-	t := theme.CurrentTheme()
-	baseStyle := styles.BaseStyle()
-
-	if pr, ok := p.permission.Params.(tools.FetchPermissionsParams); ok {
-		content := fmt.Sprintf("```bash\n%s\n```", pr.URL)
-
-		// Use the cache for markdown rendering
-		renderedContent := p.GetOrSetMarkdown(p.permission.ID, func() (string, error) {
-			r := styles.GetMarkdownRenderer(p.width - 10)
-			s, err := r.Render(content)
-			return styles.ForceReplaceBackgroundWithLipgloss(s, t.Background()), err
-		})
-
-		finalContent := baseStyle.
-			Width(p.contentViewPort.Width).
-			Render(renderedContent)
-		p.contentViewPort.SetContent(finalContent)
 		return p.styleViewport()
 	}
 	return ""
@@ -412,8 +386,6 @@ func (p *permissionDialogCmp) render() string {
 		contentFinal = p.renderPatchContent()
 	case tools.WriteToolName:
 		contentFinal = p.renderWriteContent()
-	case tools.FetchToolName:
-		contentFinal = p.renderFetchContent()
 	default:
 		contentFinal = p.renderDefaultContent()
 	}
@@ -462,9 +434,6 @@ func (p *permissionDialogCmp) SetSize() tea.Cmd {
 	case tools.WriteToolName:
 		p.width = int(float64(p.windowSize.Width) * 0.8)
 		p.height = int(float64(p.windowSize.Height) * 0.8)
-	case tools.FetchToolName:
-		p.width = int(float64(p.windowSize.Width) * 0.4)
-		p.height = int(float64(p.windowSize.Height) * 0.3)
 	default:
 		p.width = int(float64(p.windowSize.Width) * 0.7)
 		p.height = int(float64(p.windowSize.Height) * 0.5)

@@ -6,18 +6,17 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
-	"github.com/opencode-ai/opencode/internal/config"
-	"github.com/opencode-ai/opencode/internal/diff"
-	"github.com/opencode-ai/opencode/internal/llm/agent"
-	"github.com/opencode-ai/opencode/internal/llm/models"
-	"github.com/opencode-ai/opencode/internal/llm/tools"
-	"github.com/opencode-ai/opencode/internal/message"
-	"github.com/opencode-ai/opencode/internal/tui/styles"
-	"github.com/opencode-ai/opencode/internal/tui/theme"
+	"github.com/opentitam-ai/opentitam/internal/config"
+	"github.com/opentitam-ai/opentitam/internal/diff"
+	"github.com/opentitam-ai/opentitam/internal/llm/agent"
+	"github.com/opentitam-ai/opentitam/internal/llm/models"
+	"github.com/opentitam-ai/opentitam/internal/llm/tools"
+	"github.com/opentitam-ai/opentitam/internal/message"
+	"github.com/opentitam-ai/opentitam/internal/tui/styles"
+	"github.com/opentitam-ai/opentitam/internal/tui/theme"
 )
 
 type uiMessageType int
@@ -224,16 +223,12 @@ func toolName(name string) string {
 		return "Bash"
 	case tools.EditToolName:
 		return "Edit"
-	case tools.FetchToolName:
-		return "Fetch"
 	case tools.GlobToolName:
 		return "Glob"
 	case tools.GrepToolName:
 		return "Grep"
 	case tools.LSToolName:
 		return "List"
-	case tools.SourcegraphToolName:
-		return "Sourcegraph"
 	case tools.ViewToolName:
 		return "View"
 	case tools.WriteToolName:
@@ -252,16 +247,12 @@ func getToolAction(name string) string {
 		return "Building command..."
 	case tools.EditToolName:
 		return "Preparing edit..."
-	case tools.FetchToolName:
-		return "Writing fetch..."
 	case tools.GlobToolName:
 		return "Finding files..."
 	case tools.GrepToolName:
 		return "Searching content..."
 	case tools.LSToolName:
 		return "Listing directory..."
-	case tools.SourcegraphToolName:
-		return "Searching code..."
 	case tools.ViewToolName:
 		return "Reading file..."
 	case tools.WriteToolName:
@@ -350,20 +341,6 @@ func renderToolParams(paramWidth int, toolCall message.ToolCall) string {
 		json.Unmarshal([]byte(toolCall.Input), &params)
 		filePath := removeWorkingDirPrefix(params.FilePath)
 		return renderParams(paramWidth, filePath)
-	case tools.FetchToolName:
-		var params tools.FetchParams
-		json.Unmarshal([]byte(toolCall.Input), &params)
-		url := params.URL
-		toolParams := []string{
-			url,
-		}
-		if params.Format != "" {
-			toolParams = append(toolParams, "format", params.Format)
-		}
-		if params.Timeout != 0 {
-			toolParams = append(toolParams, "timeout", (time.Duration(params.Timeout) * time.Second).String())
-		}
-		return renderParams(paramWidth, toolParams...)
 	case tools.GlobToolName:
 		var params tools.GlobParams
 		json.Unmarshal([]byte(toolCall.Input), &params)
@@ -400,10 +377,6 @@ func renderToolParams(paramWidth int, toolCall message.ToolCall) string {
 			path = "."
 		}
 		return renderParams(paramWidth, path)
-	case tools.SourcegraphToolName:
-		var params tools.SourcegraphParams
-		json.Unmarshal([]byte(toolCall.Input), &params)
-		return renderParams(paramWidth, params.Query)
 	case tools.ViewToolName:
 		var params tools.ViewParams
 		json.Unmarshal([]byte(toolCall.Input), &params)
@@ -470,28 +443,11 @@ func renderToolResponse(toolCall message.ToolCall, response message.ToolResult, 
 		truncDiff := truncateHeight(metadata.Diff, maxResultHeight)
 		formattedDiff, _ := diff.FormatDiff(truncDiff, diff.WithTotalWidth(width))
 		return formattedDiff
-	case tools.FetchToolName:
-		var params tools.FetchParams
-		json.Unmarshal([]byte(toolCall.Input), &params)
-		mdFormat := "markdown"
-		switch params.Format {
-		case "text":
-			mdFormat = "text"
-		case "html":
-			mdFormat = "html"
-		}
-		resultContent = fmt.Sprintf("```%s\n%s\n```", mdFormat, resultContent)
-		return styles.ForceReplaceBackgroundWithLipgloss(
-			toMarkdown(resultContent, true, width),
-			t.Background(),
-		)
 	case tools.GlobToolName:
 		return baseStyle.Width(width).Foreground(t.TextMuted()).Render(resultContent)
 	case tools.GrepToolName:
 		return baseStyle.Width(width).Foreground(t.TextMuted()).Render(resultContent)
 	case tools.LSToolName:
-		return baseStyle.Width(width).Foreground(t.TextMuted()).Render(resultContent)
-	case tools.SourcegraphToolName:
 		return baseStyle.Width(width).Foreground(t.TextMuted()).Render(resultContent)
 	case tools.ViewToolName:
 		metadata := tools.ViewResponseMetadata{}

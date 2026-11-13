@@ -6,10 +6,10 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/opencode-ai/opencode/internal/tui/layout"
-	"github.com/opencode-ai/opencode/internal/tui/styles"
-	"github.com/opencode-ai/opencode/internal/tui/theme"
-	"github.com/opencode-ai/opencode/internal/tui/util"
+	"github.com/opentitam-ai/opentitam/internal/tui/layout"
+	"github.com/opentitam-ai/opentitam/internal/tui/styles"
+	"github.com/opentitam-ai/opentitam/internal/tui/theme"
+	"github.com/opentitam-ai/opentitam/internal/tui/util"
 )
 
 const question = "Are you sure you want to quit?"
