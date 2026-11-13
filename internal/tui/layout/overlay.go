@@ -8,9 +8,9 @@ import (
 	"github.com/muesli/ansi"
 	"github.com/muesli/reflow/truncate"
 	"github.com/muesli/termenv"
-	"github.com/opentitam-ai/opentitam/internal/tui/styles"
-	"github.com/opentitam-ai/opentitam/internal/tui/theme"
-	"github.com/opentitam-ai/opentitam/internal/tui/util"
+	"github.com/mr-daaku/opentitam/internal/tui/styles"
+	"github.com/mr-daaku/opentitam/internal/tui/theme"
+	"github.com/mr-daaku/opentitam/internal/tui/util"
 )
 
 // Most of this code is borrowed from

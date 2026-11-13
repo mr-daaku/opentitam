@@ -10,14 +10,14 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/opentitam-ai/opentitam/internal/app"
-	"github.com/opentitam-ai/opentitam/internal/message"
-	"github.com/opentitam-ai/opentitam/internal/pubsub"
-	"github.com/opentitam-ai/opentitam/internal/session"
-	"github.com/opentitam-ai/opentitam/internal/tui/components/dialog"
-	"github.com/opentitam-ai/opentitam/internal/tui/styles"
-	"github.com/opentitam-ai/opentitam/internal/tui/theme"
-	"github.com/opentitam-ai/opentitam/internal/tui/util"
+	"github.com/mr-daaku/opentitam/internal/app"
+	"github.com/mr-daaku/opentitam/internal/message"
+	"github.com/mr-daaku/opentitam/internal/pubsub"
+	"github.com/mr-daaku/opentitam/internal/session"
+	"github.com/mr-daaku/opentitam/internal/tui/components/dialog"
+	"github.com/mr-daaku/opentitam/internal/tui/styles"
+	"github.com/mr-daaku/opentitam/internal/tui/theme"
+	"github.com/mr-daaku/opentitam/internal/tui/util"
 )
 
 type cacheItem struct {

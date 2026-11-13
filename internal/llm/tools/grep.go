@@ -14,8 +14,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/opentitam-ai/opentitam/internal/config"
-	"github.com/opentitam-ai/opentitam/internal/fileutil"
+	"github.com/mr-daaku/opentitam/internal/config"
+	"github.com/mr-daaku/opentitam/internal/fileutil"
 )
 
 type GrepParams struct {

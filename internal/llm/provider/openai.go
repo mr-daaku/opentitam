@@ -11,11 +11,11 @@ import (
 	"github.com/openai/openai-go"
 	"github.com/openai/openai-go/option"
 	"github.com/openai/openai-go/shared"
-	"github.com/opentitam-ai/opentitam/internal/config"
-	"github.com/opentitam-ai/opentitam/internal/llm/models"
-	"github.com/opentitam-ai/opentitam/internal/llm/tools"
-	"github.com/opentitam-ai/opentitam/internal/logging"
-	"github.com/opentitam-ai/opentitam/internal/message"
+	"github.com/mr-daaku/opentitam/internal/config"
+	"github.com/mr-daaku/opentitam/internal/llm/models"
+	"github.com/mr-daaku/opentitam/internal/llm/tools"
+	"github.com/mr-daaku/opentitam/internal/logging"
+	"github.com/mr-daaku/opentitam/internal/message"
 )
 
 type openaiOptions struct {

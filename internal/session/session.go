@@ -5,8 +5,8 @@ import (
 	"database/sql"
 
 	"github.com/google/uuid"
-	"github.com/opentitam-ai/opentitam/internal/db"
-	"github.com/opentitam-ai/opentitam/internal/pubsub"
+	"github.com/mr-daaku/opentitam/internal/db"
+	"github.com/mr-daaku/opentitam/internal/pubsub"
 )
 
 type Session struct {

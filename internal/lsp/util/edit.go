@@ -7,7 +7,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/opentitam-ai/opentitam/internal/lsp/protocol"
+	"github.com/mr-daaku/opentitam/internal/lsp/protocol"
 )
 
 func applyTextEdits(uri protocol.DocumentUri, edits []protocol.TextEdit) error {

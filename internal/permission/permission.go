@@ -7,8 +7,8 @@ import (
 	"sync"
 
 	"github.com/google/uuid"
-	"github.com/opentitam-ai/opentitam/internal/config"
-	"github.com/opentitam-ai/opentitam/internal/pubsub"
+	"github.com/mr-daaku/opentitam/internal/config"
+	"github.com/mr-daaku/opentitam/internal/pubsub"
 )
 
 var ErrorPermissionDenied = errors.New("permission denied")

@@ -5,11 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/opentitam-ai/opentitam/internal/config"
-	"github.com/opentitam-ai/opentitam/internal/llm/tools"
-	"github.com/opentitam-ai/opentitam/internal/lsp"
-	"github.com/opentitam-ai/opentitam/internal/message"
-	"github.com/opentitam-ai/opentitam/internal/session"
+	"github.com/mr-daaku/opentitam/internal/config"
+	"github.com/mr-daaku/opentitam/internal/llm/tools"
+	"github.com/mr-daaku/opentitam/internal/lsp"
+	"github.com/mr-daaku/opentitam/internal/message"
+	"github.com/mr-daaku/opentitam/internal/session"
 )
 
 type agentTool struct {

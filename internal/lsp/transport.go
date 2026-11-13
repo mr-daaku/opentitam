@@ -8,8 +8,8 @@ import (
 	"io"
 	"strings"
 
-	"github.com/opentitam-ai/opentitam/internal/config"
-	"github.com/opentitam-ai/opentitam/internal/logging"
+	"github.com/mr-daaku/opentitam/internal/config"
+	"github.com/mr-daaku/opentitam/internal/logging"
 )
 
 // Write writes an LSP message to the given writer

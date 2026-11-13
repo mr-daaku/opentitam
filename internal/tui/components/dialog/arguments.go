@@ -7,9 +7,9 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
-	"github.com/opentitam-ai/opentitam/internal/tui/styles"
-	"github.com/opentitam-ai/opentitam/internal/tui/theme"
-	"github.com/opentitam-ai/opentitam/internal/tui/util"
+	"github.com/mr-daaku/opentitam/internal/tui/styles"
+	"github.com/mr-daaku/opentitam/internal/tui/theme"
+	"github.com/mr-daaku/opentitam/internal/tui/util"
 )
 
 type argumentsDialogKeyMap struct {

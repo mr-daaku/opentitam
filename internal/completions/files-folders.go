@@ -7,9 +7,9 @@ import (
 	"path/filepath"
 
 	"github.com/lithammer/fuzzysearch/fuzzy"
-	"github.com/opentitam-ai/opentitam/internal/fileutil"
-	"github.com/opentitam-ai/opentitam/internal/logging"
-	"github.com/opentitam-ai/opentitam/internal/tui/components/dialog"
+	"github.com/mr-daaku/opentitam/internal/fileutil"
+	"github.com/mr-daaku/opentitam/internal/logging"
+	"github.com/mr-daaku/opentitam/internal/tui/components/dialog"
 )
 
 type filesAndFoldersContextGroup struct {

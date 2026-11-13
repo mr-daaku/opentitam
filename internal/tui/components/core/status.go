@@ -7,16 +7,16 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/opentitam-ai/opentitam/internal/config"
-	"github.com/opentitam-ai/opentitam/internal/llm/models"
-	"github.com/opentitam-ai/opentitam/internal/lsp"
-	"github.com/opentitam-ai/opentitam/internal/lsp/protocol"
-	"github.com/opentitam-ai/opentitam/internal/pubsub"
-	"github.com/opentitam-ai/opentitam/internal/session"
-	"github.com/opentitam-ai/opentitam/internal/tui/components/chat"
-	"github.com/opentitam-ai/opentitam/internal/tui/styles"
-	"github.com/opentitam-ai/opentitam/internal/tui/theme"
-	"github.com/opentitam-ai/opentitam/internal/tui/util"
+	"github.com/mr-daaku/opentitam/internal/config"
+	"github.com/mr-daaku/opentitam/internal/llm/models"
+	"github.com/mr-daaku/opentitam/internal/lsp"
+	"github.com/mr-daaku/opentitam/internal/lsp/protocol"
+	"github.com/mr-daaku/opentitam/internal/pubsub"
+	"github.com/mr-daaku/opentitam/internal/session"
+	"github.com/mr-daaku/opentitam/internal/tui/components/chat"
+	"github.com/mr-daaku/opentitam/internal/tui/styles"
+	"github.com/mr-daaku/opentitam/internal/tui/theme"
+	"github.com/mr-daaku/opentitam/internal/tui/util"
 )
 
 type StatusCmp interface {

@@ -1,6 +1,6 @@
 package prompt
 
-import "github.com/opentitam-ai/opentitam/internal/llm/models"
+import "github.com/mr-daaku/opentitam/internal/llm/models"
 
 func SummarizerPrompt(_ models.ModelProvider) string {
 	return `You are a helpful AI assistant tasked with summarizing conversations.

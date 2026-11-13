@@ -8,13 +8,13 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/opentitam-ai/opentitam/internal/diff"
-	"github.com/opentitam-ai/opentitam/internal/llm/tools"
-	"github.com/opentitam-ai/opentitam/internal/permission"
-	"github.com/opentitam-ai/opentitam/internal/tui/layout"
-	"github.com/opentitam-ai/opentitam/internal/tui/styles"
-	"github.com/opentitam-ai/opentitam/internal/tui/theme"
-	"github.com/opentitam-ai/opentitam/internal/tui/util"
+	"github.com/mr-daaku/opentitam/internal/diff"
+	"github.com/mr-daaku/opentitam/internal/llm/tools"
+	"github.com/mr-daaku/opentitam/internal/permission"
+	"github.com/mr-daaku/opentitam/internal/tui/layout"
+	"github.com/mr-daaku/opentitam/internal/tui/styles"
+	"github.com/mr-daaku/opentitam/internal/tui/theme"
+	"github.com/mr-daaku/opentitam/internal/tui/util"
 )
 
 type PermissionAction string

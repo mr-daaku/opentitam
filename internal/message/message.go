@@ -8,9 +8,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/opentitam-ai/opentitam/internal/db"
-	"github.com/opentitam-ai/opentitam/internal/llm/models"
-	"github.com/opentitam-ai/opentitam/internal/pubsub"
+	"github.com/mr-daaku/opentitam/internal/db"
+	"github.com/mr-daaku/opentitam/internal/llm/models"
+	"github.com/mr-daaku/opentitam/internal/pubsub"
 )
 
 type CreateMessageParams struct {

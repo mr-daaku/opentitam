@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/opentitam-ai/opentitam/internal/llm/models"
-	"github.com/opentitam-ai/opentitam/internal/logging"
+	"github.com/mr-daaku/opentitam/internal/llm/models"
+	"github.com/mr-daaku/opentitam/internal/logging"
 	"github.com/spf13/viper"
 )
 

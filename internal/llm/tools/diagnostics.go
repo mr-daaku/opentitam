@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/opentitam-ai/opentitam/internal/lsp"
-	"github.com/opentitam-ai/opentitam/internal/lsp/protocol"
+	"github.com/mr-daaku/opentitam/internal/lsp"
+	"github.com/mr-daaku/opentitam/internal/lsp/protocol"
 )
 
 type DiagnosticsParams struct {

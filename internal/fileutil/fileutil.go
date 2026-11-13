@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/bmatcuk/doublestar/v4"
-	"github.com/opentitam-ai/opentitam/internal/logging"
+	"github.com/mr-daaku/opentitam/internal/logging"
 )
 
 var (

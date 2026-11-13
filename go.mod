@@ -1,4 +1,4 @@
-module github.com/opentitam-ai/opentitam
+module github.com/mr-daaku/opentitam
 
 go 1.24.0
 

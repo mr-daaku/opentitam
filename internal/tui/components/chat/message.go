@@ -9,14 +9,14 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
-	"github.com/opentitam-ai/opentitam/internal/config"
-	"github.com/opentitam-ai/opentitam/internal/diff"
-	"github.com/opentitam-ai/opentitam/internal/llm/agent"
-	"github.com/opentitam-ai/opentitam/internal/llm/models"
-	"github.com/opentitam-ai/opentitam/internal/llm/tools"
-	"github.com/opentitam-ai/opentitam/internal/message"
-	"github.com/opentitam-ai/opentitam/internal/tui/styles"
-	"github.com/opentitam-ai/opentitam/internal/tui/theme"
+	"github.com/mr-daaku/opentitam/internal/config"
+	"github.com/mr-daaku/opentitam/internal/diff"
+	"github.com/mr-daaku/opentitam/internal/llm/agent"
+	"github.com/mr-daaku/opentitam/internal/llm/models"
+	"github.com/mr-daaku/opentitam/internal/llm/tools"
+	"github.com/mr-daaku/opentitam/internal/message"
+	"github.com/mr-daaku/opentitam/internal/tui/styles"
+	"github.com/mr-daaku/opentitam/internal/tui/theme"
 )
 
 type uiMessageType int

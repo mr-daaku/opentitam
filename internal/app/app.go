@@ -9,17 +9,17 @@ import (
 	"sync"
 	"time"
 
-	"github.com/opentitam-ai/opentitam/internal/config"
-	"github.com/opentitam-ai/opentitam/internal/db"
-	"github.com/opentitam-ai/opentitam/internal/format"
-	"github.com/opentitam-ai/opentitam/internal/history"
-	"github.com/opentitam-ai/opentitam/internal/llm/agent"
-	"github.com/opentitam-ai/opentitam/internal/logging"
-	"github.com/opentitam-ai/opentitam/internal/lsp"
-	"github.com/opentitam-ai/opentitam/internal/message"
-	"github.com/opentitam-ai/opentitam/internal/permission"
-	"github.com/opentitam-ai/opentitam/internal/session"
-	"github.com/opentitam-ai/opentitam/internal/tui/theme"
+	"github.com/mr-daaku/opentitam/internal/config"
+	"github.com/mr-daaku/opentitam/internal/db"
+	"github.com/mr-daaku/opentitam/internal/format"
+	"github.com/mr-daaku/opentitam/internal/history"
+	"github.com/mr-daaku/opentitam/internal/llm/agent"
+	"github.com/mr-daaku/opentitam/internal/logging"
+	"github.com/mr-daaku/opentitam/internal/lsp"
+	"github.com/mr-daaku/opentitam/internal/message"
+	"github.com/mr-daaku/opentitam/internal/permission"
+	"github.com/mr-daaku/opentitam/internal/session"
+	"github.com/mr-daaku/opentitam/internal/tui/theme"
 )
 
 type App struct {

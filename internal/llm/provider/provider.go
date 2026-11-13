@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/opentitam-ai/opentitam/internal/llm/models"
-	"github.com/opentitam-ai/opentitam/internal/llm/tools"
-	"github.com/opentitam-ai/opentitam/internal/message"
+	"github.com/mr-daaku/opentitam/internal/llm/models"
+	"github.com/mr-daaku/opentitam/internal/llm/tools"
+	"github.com/mr-daaku/opentitam/internal/message"
 )
 
 type EventType string

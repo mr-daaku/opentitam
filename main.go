@@ -1,8 +1,8 @@
 package main
 
 import (
-	"github.com/opentitam-ai/opentitam/cmd"
-	"github.com/opentitam-ai/opentitam/internal/logging"
+	"github.com/mr-daaku/opentitam/cmd"
+	"github.com/mr-daaku/opentitam/internal/logging"
 )
 
 func main() {

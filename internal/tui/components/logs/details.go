@@ -9,10 +9,10 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/opentitam-ai/opentitam/internal/logging"
-	"github.com/opentitam-ai/opentitam/internal/tui/layout"
-	"github.com/opentitam-ai/opentitam/internal/tui/styles"
-	"github.com/opentitam-ai/opentitam/internal/tui/theme"
+	"github.com/mr-daaku/opentitam/internal/logging"
+	"github.com/mr-daaku/opentitam/internal/tui/layout"
+	"github.com/mr-daaku/opentitam/internal/tui/styles"
+	"github.com/mr-daaku/opentitam/internal/tui/theme"
 )
 
 type DetailComponent interface {

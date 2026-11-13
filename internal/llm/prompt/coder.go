@@ -8,9 +8,9 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/opentitam-ai/opentitam/internal/config"
-	"github.com/opentitam-ai/opentitam/internal/llm/models"
-	"github.com/opentitam-ai/opentitam/internal/llm/tools"
+	"github.com/mr-daaku/opentitam/internal/config"
+	"github.com/mr-daaku/opentitam/internal/llm/models"
+	"github.com/mr-daaku/opentitam/internal/llm/tools"
 )
 
 func CoderPrompt(provider models.ModelProvider) string {

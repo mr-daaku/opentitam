@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/opentitam-ai/opentitam/internal/config"
+	"github.com/mr-daaku/opentitam/internal/config"
 )
 
 type LSParams struct {

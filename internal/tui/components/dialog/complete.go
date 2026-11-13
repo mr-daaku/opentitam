@@ -5,12 +5,12 @@ import (
 	"github.com/charmbracelet/bubbles/textarea"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/opentitam-ai/opentitam/internal/logging"
-	utilComponents "github.com/opentitam-ai/opentitam/internal/tui/components/util"
-	"github.com/opentitam-ai/opentitam/internal/tui/layout"
-	"github.com/opentitam-ai/opentitam/internal/tui/styles"
-	"github.com/opentitam-ai/opentitam/internal/tui/theme"
-	"github.com/opentitam-ai/opentitam/internal/tui/util"
+	"github.com/mr-daaku/opentitam/internal/logging"
+	utilComponents "github.com/mr-daaku/opentitam/internal/tui/components/util"
+	"github.com/mr-daaku/opentitam/internal/tui/layout"
+	"github.com/mr-daaku/opentitam/internal/tui/styles"
+	"github.com/mr-daaku/opentitam/internal/tui/theme"
+	"github.com/mr-daaku/opentitam/internal/tui/util"
 )
 
 type CompletionItem struct {

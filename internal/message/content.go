@@ -5,7 +5,7 @@ import (
 	"slices"
 	"time"
 
-	"github.com/opentitam-ai/opentitam/internal/llm/models"
+	"github.com/mr-daaku/opentitam/internal/llm/models"
 )
 
 type MessageRole string

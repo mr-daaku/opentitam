@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/opentitam-ai/opentitam/internal/config"
-	"github.com/opentitam-ai/opentitam/internal/llm/tools/shell"
-	"github.com/opentitam-ai/opentitam/internal/permission"
+	"github.com/mr-daaku/opentitam/internal/config"
+	"github.com/mr-daaku/opentitam/internal/llm/tools/shell"
+	"github.com/mr-daaku/opentitam/internal/permission"
 )
 
 type BashParams struct {

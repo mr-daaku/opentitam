@@ -2,7 +2,7 @@ package styles
 
 import (
 	"github.com/charmbracelet/lipgloss"
-	"github.com/opentitam-ai/opentitam/internal/tui/theme"
+	"github.com/mr-daaku/opentitam/internal/tui/theme"
 )
 
 var (

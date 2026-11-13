@@ -3,7 +3,7 @@ package prompt
 import (
 	"fmt"
 
-	"github.com/opentitam-ai/opentitam/internal/llm/models"
+	"github.com/mr-daaku/opentitam/internal/llm/models"
 )
 
 func TaskPrompt(_ models.ModelProvider) string {

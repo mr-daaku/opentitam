@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/opentitam-ai/opentitam/internal/lsp/protocol"
+	"github.com/mr-daaku/opentitam/internal/lsp/protocol"
 )
 
 func DetectLanguageID(uri string) protocol.LanguageKind {

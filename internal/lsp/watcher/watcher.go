@@ -11,10 +11,10 @@ import (
 
 	"github.com/bmatcuk/doublestar/v4"
 	"github.com/fsnotify/fsnotify"
-	"github.com/opentitam-ai/opentitam/internal/config"
-	"github.com/opentitam-ai/opentitam/internal/logging"
-	"github.com/opentitam-ai/opentitam/internal/lsp"
-	"github.com/opentitam-ai/opentitam/internal/lsp/protocol"
+	"github.com/mr-daaku/opentitam/internal/config"
+	"github.com/mr-daaku/opentitam/internal/logging"
+	"github.com/mr-daaku/opentitam/internal/lsp"
+	"github.com/mr-daaku/opentitam/internal/lsp/protocol"
 )
 
 // WorkspaceWatcher manages LSP file watching

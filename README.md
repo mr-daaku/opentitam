@@ -70,7 +70,7 @@ paru -S opentitam-ai-bin
 ### Using Go
 
 ```bash
-go install github.com/opentitam-ai/opentitam@latest
+go install github.com/mr-daaku/opentitam@latest
 ```
 
 ## Configuration
@@ -664,7 +664,7 @@ You can also configure a self-hosted model in the configuration file under the `
 
 ```bash
 # Clone the repository
-git clone https://github.com/opentitam-ai/opentitam.git
+git clone https://github.com/mr-daaku/opentitam.git
 cd opentitam
 
 # Build

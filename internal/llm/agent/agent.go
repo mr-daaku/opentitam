@@ -8,16 +8,16 @@ import (
 	"sync"
 	"time"
 
-	"github.com/opentitam-ai/opentitam/internal/config"
-	"github.com/opentitam-ai/opentitam/internal/llm/models"
-	"github.com/opentitam-ai/opentitam/internal/llm/prompt"
-	"github.com/opentitam-ai/opentitam/internal/llm/provider"
-	"github.com/opentitam-ai/opentitam/internal/llm/tools"
-	"github.com/opentitam-ai/opentitam/internal/logging"
-	"github.com/opentitam-ai/opentitam/internal/message"
-	"github.com/opentitam-ai/opentitam/internal/permission"
-	"github.com/opentitam-ai/opentitam/internal/pubsub"
-	"github.com/opentitam-ai/opentitam/internal/session"
+	"github.com/mr-daaku/opentitam/internal/config"
+	"github.com/mr-daaku/opentitam/internal/llm/models"
+	"github.com/mr-daaku/opentitam/internal/llm/prompt"
+	"github.com/mr-daaku/opentitam/internal/llm/provider"
+	"github.com/mr-daaku/opentitam/internal/llm/tools"
+	"github.com/mr-daaku/opentitam/internal/logging"
+	"github.com/mr-daaku/opentitam/internal/message"
+	"github.com/mr-daaku/opentitam/internal/permission"
+	"github.com/mr-daaku/opentitam/internal/pubsub"
+	"github.com/mr-daaku/opentitam/internal/session"
 )
 
 // Common errors

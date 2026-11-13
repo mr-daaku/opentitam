@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/opentitam-ai/opentitam/internal/config"
-	"github.com/opentitam-ai/opentitam/internal/llm/models"
+	"github.com/mr-daaku/opentitam/internal/config"
+	"github.com/mr-daaku/opentitam/internal/llm/models"
 )
 
 // JSONSchemaType represents a JSON Schema type

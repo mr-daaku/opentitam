@@ -4,11 +4,11 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	utilComponents "github.com/opentitam-ai/opentitam/internal/tui/components/util"
-	"github.com/opentitam-ai/opentitam/internal/tui/layout"
-	"github.com/opentitam-ai/opentitam/internal/tui/styles"
-	"github.com/opentitam-ai/opentitam/internal/tui/theme"
-	"github.com/opentitam-ai/opentitam/internal/tui/util"
+	utilComponents "github.com/mr-daaku/opentitam/internal/tui/components/util"
+	"github.com/mr-daaku/opentitam/internal/tui/layout"
+	"github.com/mr-daaku/opentitam/internal/tui/styles"
+	"github.com/mr-daaku/opentitam/internal/tui/theme"
+	"github.com/mr-daaku/opentitam/internal/tui/util"
 )
 
 // Command represents a command that can be executed

@@ -4,7 +4,7 @@ package lsp
 import (
 	"context"
 
-	"github.com/opentitam-ai/opentitam/internal/lsp/protocol"
+	"github.com/mr-daaku/opentitam/internal/lsp/protocol"
 )
 
 // Implementation sends a textDocument/implementation request to the LSP server.
