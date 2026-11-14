@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -23,26 +24,30 @@ import (
 	"github.com/mr-daaku/opentitam/internal/session"
 )
 
+// Version is the single source of truth for the build version (cli prints it
+// too — cli.Version references this constant).
+const Version = "0.3.0"
+
 // ---- theme: exact hexes from the OpenCode "opencode" dark theme ----
 
 var (
 	// surfaces
-	bgBase    = lipgloss.Color("#0a0a0a")
-	bgRaised  = lipgloss.Color("#141414")
-	bgHigh    = lipgloss.Color("#1e1e1e")
+	bgBase   = lipgloss.Color("#0a0a0a")
+	bgRaised = lipgloss.Color("#141414")
+	bgHigh   = lipgloss.Color("#1e1e1e")
 	// text
 	textBase  = lipgloss.Color("#eeeeee")
 	textMuted = lipgloss.Color("#808080")
 	// chrome
-	borderBase    = lipgloss.Color("#484848")
-	borderActive  = lipgloss.Color("#606060")
+	borderBase   = lipgloss.Color("#484848")
+	borderActive = lipgloss.Color("#606060")
 	// feedback
 	colError   = lipgloss.Color("#e06c75")
 	colWarning = lipgloss.Color("#f5a742")
 	colSuccess = lipgloss.Color("#7fd88f")
 	colInfo    = lipgloss.Color("#56b6c2")
 	// hues
-	colAccent     = lipgloss.Color("#9d7cd8") // purple, headings
+	colAccent      = lipgloss.Color("#9d7cd8") // purple, headings
 	colInteractive = lipgloss.Color("#fab283") // orange, focus/markers
 )
 
@@ -76,6 +81,26 @@ var (
 	styleMuted     = lipgloss.NewStyle().Foreground(textMuted)
 	styleAccent    = lipgloss.NewStyle().Foreground(colAccent).Bold(true)
 
+	// markdown renderer styles (chat text is colorful, never raw ** etc).
+	styleMDH1     = lipgloss.NewStyle().Bold(true).Foreground(colAccent)
+	styleMDH2     = lipgloss.NewStyle().Bold(true).Foreground(colAccent)
+	styleMDH3     = lipgloss.NewStyle().Bold(true).Foreground(colInteractive)
+	styleMDBold   = lipgloss.NewStyle().Bold(true).Foreground(textBase)
+	styleMDItalic = lipgloss.NewStyle().Italic(true).Foreground(colAccent)
+	styleMDCode   = lipgloss.NewStyle().Foreground(colInfo).Background(bgHigh)
+	styleMDCodeBl = lipgloss.NewStyle().Foreground(colInfo).Background(bgHigh).Padding(0, 1)
+	styleMDBullet = lipgloss.NewStyle().Foreground(colInteractive)
+	styleMDLink   = lipgloss.NewStyle().Foreground(colInfo).Underline(true)
+	styleMDQuote  = lipgloss.NewStyle().Foreground(textMuted).Italic(true)
+
+	// thinking (reasoning) block: hidden by default, click to expand.
+	styleThinkIdle = lipgloss.NewStyle().Foreground(textMuted).Faint(true)
+	styleThinkHead = lipgloss.NewStyle().Bold(true).Foreground(colInfo)
+	styleThinkBody = lipgloss.NewStyle().Foreground(textMuted).Faint(true)
+
+	// sidebar section headers.
+	styleSideHead = lipgloss.NewStyle().Bold(true).Foreground(colInteractive)
+
 	styleUserBody = lipgloss.NewStyle().
 			Background(bgRaised).
 			Foreground(textBase).
@@ -105,6 +130,7 @@ var (
 
 type (
 	textDeltaMsg   struct{ text string }
+	reasonDeltaMsg struct{ text string }
 	textDoneMsg    struct{}
 	toolStartMsg   struct {
 		name string
@@ -115,8 +141,8 @@ type (
 		result string
 		err    error
 	}
-	agentErrMsg    struct{ err error }
-	agentDoneMsg   struct{ messages []provider.Message }
+	agentErrMsg     struct{ err error }
+	agentDoneMsg    struct{ messages []provider.Message }
 	modelsLoadedMsg struct {
 		models []provider.Model
 		err    error
@@ -152,10 +178,12 @@ type permRequest struct {
 }
 
 type block struct {
-	kind    string // user | assistant | streaming | tool_start | tool_end | error | info | footer
+	kind    string // user | assistant | streaming | thinking | tool_start | tool_end | error | info | footer
 	label   string
 	body    string
 	pending bool
+	// expanded toggles the thinking block (collapsed by default, click shows).
+	expanded bool
 }
 
 // Model is the root Bubble Tea model.
@@ -181,58 +209,126 @@ type Model struct {
 	footer  string
 	perm    *permRequest
 
-	streaming    bool
-	streamBuf    strings.Builder
-	spinFrame    int
-	turnStart    time.Time
-	turnCancel   context.CancelFunc
-	userCancel   bool
+	// command palette / slash popup filter buffer (never pollutes the composer)
+	filter string
+
+	// transcript hit-testing (click on thinking blocks) + viewport rect
+	blockOfLine []int
+	vpTop       int
+	vpH         int
+	vpX0        int
+	vpW         int
+
+	// current-turn reasoning block index (-1 = none yet)
+	thinkIdx  int
+	reasonBuf strings.Builder
+
+	// sidebar folder details (cached on layout)
+	folder folderInfo
+
+	streaming     bool
+	streamBuf     strings.Builder
+	turnHadText   bool
+	spinFrame     int
+	turnStart     time.Time
+	turnCancel    context.CancelFunc
+	userCancel    bool
 	leaderPending bool
 	knownModels   []provider.Model
 	status        string
 	quitting      bool
 
 	// first-run provider setup
-	keyInput   textarea.Model
+	keyInput    textarea.Model
 	setupPreset provider.Preset
-	setupBase  string
-	setupMode  string // "base" (custom URL entry) | "key"
-	setupErr   string
-	testing    bool
+	setupBase   string
+	setupMode   string // "base" (custom URL entry) | "key"
+	setupErr    string
+	testing     bool
 
-	ctx    context.Context
-	cwd    string
+	ctx context.Context
+	cwd string
 }
 
 var spinFrames = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
+
+// folderInfo is the cached sidebar folder summary (path, counts, top entries).
+type folderInfo struct {
+	path    string
+	dirs    int
+	files   int
+	entries []string // display names, directories first (max 10)
+	err     bool
+}
+
+// readFolder inspects cwd for the right sidebar (folder details).
+func readFolder(path string) folderInfo {
+	fi := folderInfo{path: path}
+	ents, err := os.ReadDir(path)
+	if err != nil {
+		fi.err = true
+		return fi
+	}
+	var dirs, files []string
+	for _, e := range ents {
+		if strings.HasPrefix(e.Name(), ".") {
+			continue
+		}
+		if e.IsDir() {
+			dirs = append(dirs, "▸ "+e.Name())
+		} else {
+			files = append(files, "· "+e.Name())
+		}
+	}
+	fi.dirs, fi.files = len(dirs), len(files)
+	for _, n := range dirs {
+		if len(fi.entries) >= 10 {
+			break
+		}
+		fi.entries = append(fi.entries, n)
+	}
+	for _, n := range files {
+		if len(fi.entries) >= 10 {
+			break
+		}
+		fi.entries = append(fi.entries, n)
+	}
+	return fi
+}
 
 // New builds the TUI model. With no provider configured the TUI still opens
 // directly — it just starts in the first-run provider setup overlay.
 func New(cfg *config.Config, cwd string) (*Model, error) {
 	ta := textarea.New()
 	ta.Placeholder = `Ask anything… "Fix a TODO in the codebase"`
-	ta.Focus()
 	ta.Prompt = ""
+	ta.ShowLineNumbers = false // no stray "1" gutter in the composer
+	ta.Focus()
 	ta.SetHeight(3)
 
 	keyInput := textarea.New()
 	keyInput.Prompt = ""
+	keyInput.ShowLineNumbers = false
 	keyInput.Placeholder = "paste your API key, then press enter"
 	keyInput.SetWidth(64)
 	keyInput.SetHeight(1)
 
 	m := &Model{
-		cfg:      cfg,
-		store:    session.NewStore(),
-		ctx:      context.Background(),
-		cwd:      cwd,
-		ta:       ta,
-		keyInput: keyInput,
-		vp:       viewport.New(80, 20),
-		status:   "ready",
+		cfg:       cfg,
+		store:     session.NewStore(),
+		ctx:       context.Background(),
+		cwd:       cwd,
+		ta:        ta,
+		keyInput:  keyInput,
+		vp:        viewport.New(80, 20),
+		status:    "ready",
+		sidebarOn: true, // right rail on by default (auto-hides under 80 cols)
+		thinkIdx:  -1,
 	}
 	m.vp.Style = lipgloss.NewStyle().Padding(0, 1)
 	m.sess = m.store.New("", "")
+	m.folder = readFolder(cwd)
+	m.syncFocus()
 
 	if len(cfg.Providers) == 0 {
 		// First run: open straight into provider setup (no forced CLI wizard).
@@ -273,6 +369,30 @@ func (m *Model) beginSetup() {
 	m.sel = 0
 	m.setupErr = ""
 	m.testing = false
+	m.syncFocus()
+}
+
+// syncFocus keeps textarea focus in lockstep with the active overlay.
+// bubbles' textarea.Update is a no-op while blurred — that is why typing or
+// pasting into the API-key dialog used to do nothing. Returns the cursor-blink
+// command for the newly focused input (nil when focus did not change).
+func (m *Model) syncFocus() tea.Cmd {
+	if m.overlay == overlayKey {
+		if m.keyInput.Focused() {
+			return nil
+		}
+		m.ta.Blur()
+		return m.keyInput.Focus()
+	}
+	m.keyInput.Blur()
+	if m.overlay == overlayNone {
+		if m.ta.Focused() {
+			return nil
+		}
+		return m.ta.Focus()
+	}
+	m.ta.Blur()
+	return nil
 }
 
 func providerLabels() []string {

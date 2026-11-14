@@ -19,7 +19,7 @@ import (
 
 // Event is emitted by the agent loop for the UI (TUI or headless run).
 type Event struct {
-	Kind string // "text_delta" | "text_done" | "tool_start" | "tool_end" | "error" | "done"
+	Kind string // "text_delta" | "reason_delta" | "text_done" | "tool_start" | "tool_end" | "error" | "done"
 	Text string
 	// Tool fields.
 	ToolName string
@@ -38,13 +38,13 @@ type ApprovalFunc func(action, resource, command string) string
 
 // Agent runs the loop.
 type Agent struct {
-	Client     *provider.Client
-	Model      string
-	Tools      *tools.Registry
-	Perms      *permissions.Engine
-	Cwd        string
-	System     string
-	Approve    ApprovalFunc
+	Client  *provider.Client
+	Model   string
+	Tools   *tools.Registry
+	Perms   *permissions.Engine
+	Cwd     string
+	System  string
+	Approve ApprovalFunc
 	// AlwaysAllow collects "allow always" patterns for the session.
 	AlwaysAllow []permissionsRule
 	maxRounds   int
@@ -59,12 +59,12 @@ type permissionsRule struct {
 // New creates an agent with defaults.
 func New(client *provider.Client, model string, reg *tools.Registry, perms *permissions.Engine, cwd string) *Agent {
 	return &Agent{
-		Client:  client,
-		Model:   model,
-		Tools:   reg,
-		Perms:   perms,
-		Cwd:     cwd,
-		System:  SystemPrompt(cwd),
+		Client:    client,
+		Model:     model,
+		Tools:     reg,
+		Perms:     perms,
+		Cwd:       cwd,
+		System:    SystemPrompt(cwd),
 		maxRounds: 50,
 	}
 }
@@ -145,6 +145,9 @@ func (a *Agent) streamOnce(ctx context.Context, msgs []provider.Message, toolDef
 		if ev.DeltaText != "" {
 			text.WriteString(ev.DeltaText)
 			out <- Event{Kind: "text_delta", Text: ev.DeltaText}
+		}
+		if ev.DeltaReasoning != "" {
+			out <- Event{Kind: "reason_delta", Text: ev.DeltaReasoning}
 		}
 		if d := ev.ToolCallDelta; d != nil {
 			tc, ok := acc[d.Index]
@@ -367,4 +370,3 @@ func LoadInstructions(cwd string) string {
 	}
 	return strings.Join(parts, "\n\n")
 }
-

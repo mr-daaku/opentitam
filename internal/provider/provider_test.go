@@ -114,3 +114,26 @@ func TestStreamToolCall(t *testing.T) {
 		t.Errorf("id = %q", got.ID)
 	}
 }
+
+// Reasoning deltas (reasoning_content) must surface as DeltaReasoning so the
+// TUI can show a collapsible thinking block.
+func TestParseChunkReasoning(t *testing.T) {
+	ev, err := parseChunk(`{"choices":[{"delta":{"reasoning_content":"let me think"}}]}`)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	if ev.DeltaReasoning != "let me think" {
+		t.Errorf("DeltaReasoning = %q", ev.DeltaReasoning)
+	}
+	if ev.DeltaText != "" {
+		t.Errorf("DeltaText should be empty, got %q", ev.DeltaText)
+	}
+
+	ev, err = parseChunk(`{"choices":[{"delta":{"content":"answer"}}]}`)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	if ev.DeltaText != "answer" || ev.DeltaReasoning != "" {
+		t.Errorf("content delta mis-parsed: %+v", ev)
+	}
+}

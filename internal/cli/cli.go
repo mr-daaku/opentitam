@@ -20,9 +20,11 @@ import (
 	"github.com/mr-daaku/opentitam/internal/permissions"
 	"github.com/mr-daaku/opentitam/internal/provider"
 	"github.com/mr-daaku/opentitam/internal/tools"
+	"github.com/mr-daaku/opentitam/internal/tui"
 )
 
-const Version = "0.2.0"
+// Version is defined once in the tui package (sidebar shows it too).
+const Version = tui.Version
 
 // Execute is the CLI entry point.
 func Execute(args []string) int {

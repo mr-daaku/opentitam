@@ -28,21 +28,35 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		return m.handleKey(msg)
 
+	case tea.MouseMsg:
+		return m.handleMouse(msg)
+
 	case textDeltaMsg:
 		m.streamBuf.WriteString(msg.text)
 		m.setStreamingText(m.streamBuf.String())
 		return m, nil
 
+	case reasonDeltaMsg:
+		m.appendReasoning(msg.text)
+		return m, nil
+
 	case textDoneMsg:
 		body := m.streamBuf.String()
 		m.streamBuf.Reset()
+		// Convert the live streaming block in place — appending a second
+		// assistant block is what made every reply render TWICE.
+		last := len(m.blocks) - 1
+		hasStream := last >= 0 && m.blocks[last].kind == "streaming"
 		if strings.TrimSpace(body) != "" {
-			// Assistant footer: Build · model · duration (spec §4.2)
-			dur := time.Since(m.turnStart).Seconds()
-			m.blocks = append(m.blocks,
-				block{kind: "assistant", label: "assistant", body: body},
-				block{kind: "footer", body: fmt.Sprintf("Build · %s · %.1fs", m.modelID, dur)},
-			)
+			m.turnHadText = true
+			if hasStream {
+				m.blocks[last].kind = "assistant"
+				m.blocks[last].body = body
+			} else {
+				m.blocks = append(m.blocks, block{kind: "assistant", label: "assistant", body: body})
+			}
+		} else if hasStream {
+			m.blocks = m.blocks[:last] // drop the empty streaming placeholder
 		}
 		return m, m.scrollToBottom()
 
@@ -82,6 +96,15 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.sess.Messages = msg.messages
 		m.sess.SetTitleFromFirstUser()
 		_ = m.store.Save(m.sess)
+		if m.turnHadText {
+			// Assistant footer once the whole turn is done (spec §4.2).
+			dur := time.Since(m.turnStart).Seconds()
+			m.blocks = append(m.blocks,
+				block{kind: "footer", body: fmt.Sprintf("Build · %s · %.1fs", m.modelID, dur)})
+			m.turnHadText = false
+			m.renderTranscript()
+			m.vp.GotoBottom()
+		}
 		m.status = "ready"
 		return m, nil
 
@@ -142,6 +165,15 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // handleKey routes keys by overlay/leader state.
 func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	blink := m.syncFocus() // textarea only accepts keys while focused (paste fix)
+	model, cmd := m.handleKeyInner(msg)
+	if blink != nil {
+		cmd = tea.Batch(blink, cmd)
+	}
+	return model, cmd
+}
+
+func (m *Model) handleKeyInner(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	k := msg.String()
 
 	// Leader chord (ctrl+x …): one-shot next-key dispatch.
@@ -184,6 +216,9 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			if len(m.cfg.Providers) == 0 && (m.overlay == overlayProvider || m.overlay == overlayKey) {
 				return m, nil
 			}
+			if m.overlay == overlayCommands {
+				return m, m.closeCommands()
+			}
 			m.overlay = overlayNone
 			return m, nil
 		case "up", "ctrl+k":
@@ -217,12 +252,31 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		case "enter":
 			return m, m.selectItem()
 		}
-		// Slash-command popup: typing filters (spec §8.6).
-		if m.overlay == overlayCommands && msg.Type == tea.KeyRunes {
-			m.ta.SetValue(m.ta.Value() + string(msg.Runes))
-			m.items = filterSlash(m.ta.Value())
-			m.sel = 0
-			return m, nil
+		// Command palette / slash popup: typing filters through its OWN
+		// buffer (m.filter) — never written into the composer, so the
+		// selection list always matches what you typed.
+		if m.overlay == overlayCommands {
+			switch msg.Type {
+			case tea.KeyRunes:
+				m.filter += string(msg.Runes)
+				m.items = filterCommands(m.filter)
+				m.sel = 0
+				return m, nil
+			case tea.KeyBackspace:
+				r := []rune(m.filter)
+				if len(r) == 0 {
+					return m, m.closeCommands()
+				}
+				m.filter = string(r[:len(r)-1])
+				m.items = filterCommands(m.filter)
+				m.sel = 0
+				return m, nil
+			case tea.KeySpace:
+				m.filter += " "
+				m.items = filterCommands(m.filter)
+				m.sel = 0
+				return m, nil
+			}
 		}
 		return m, nil
 	}
@@ -252,6 +306,7 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.overlay = overlayCommands
 		m.title = "Commands"
 		m.footer = "type to filter · enter run · esc close"
+		m.filter = ""
 		m.items = allCommands()
 		m.sel = 0
 		return m, nil
@@ -274,8 +329,13 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	// Enter submits; shift/ctrl/alt+enter (and ctrl+j) insert newline (spec §3.4).
-	if msg.Type == tea.KeyEnter && !msg.Alt && k != "ctrl+enter" {
+	// Enter submits; alt/ctrl+enter insert newline (spec §3.4; plain shift+enter
+	// is indistinguishable from enter without keyboard-enhancement protocol).
+	if msg.Type == tea.KeyEnter {
+		if msg.Alt || k == "ctrl+enter" || k == "alt+enter" {
+			m.ta.InsertRune('\n')
+			return m, nil
+		}
 		return m.submit()
 	}
 	if k == "ctrl+j" {
@@ -287,11 +347,15 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	m.ta, cmd = m.ta.Update(msg)
 
 	// Opening "/" triggers the slash popup (autocomplete spec §8.6).
+	// The composer is cleared — from here the popup owns the typing via
+	// m.filter, so the popup and composer never mix text.
 	if m.ta.Value() == "/" {
+		m.ta.Reset()
 		m.overlay = overlayCommands
 		m.title = "Commands"
 		m.footer = "type to filter · enter select · esc close"
-		m.items = filterSlash("/")
+		m.filter = "/"
+		m.items = filterCommands("/")
 		m.sel = 0
 	}
 	return m, cmd
@@ -413,6 +477,9 @@ func (m *Model) submit() (tea.Model, tea.Cmd) {
 	m.blocks = append(m.blocks, block{kind: "user", label: "you", body: text})
 	m.streaming = true
 	m.streamBuf.Reset()
+	m.turnHadText = false
+	m.thinkIdx = -1
+	m.reasonBuf.Reset()
 	m.turnStart = time.Now()
 	m.status = "thinking"
 	m.blocks = append(m.blocks, block{kind: "streaming", label: "assistant", body: ""})
@@ -430,6 +497,8 @@ func (m *Model) submit() (tea.Model, tea.Cmd) {
 				switch ev.Kind {
 				case "text_delta":
 					send(textDeltaMsg{ev.Text})
+				case "reason_delta":
+					send(reasonDeltaMsg{ev.Text})
 				case "text_done":
 					send(textDoneMsg{})
 				case "tool_start":
@@ -523,6 +592,9 @@ func (m *Model) doCompact() tea.Cmd {
 
 func (m *Model) selectItem() tea.Cmd {
 	if m.sel < 0 || m.sel >= len(m.items) {
+		if m.overlay == overlayCommands {
+			return m.closeCommands()
+		}
 		m.overlay = overlayNone
 		return nil
 	}
@@ -584,9 +656,26 @@ func (m *Model) selectItem() tea.Cmd {
 			}
 		}
 	case overlayCommands:
-		m.overlay = overlayNone
-		m.ta.Reset()
+		if len(m.items) == 0 || m.sel < 0 || m.sel >= len(m.items) {
+			// Nothing matched — put an explicit "/cmd" back in the composer.
+			m.closeCommands()
+			return nil
+		}
 		return m.runCommand(item)
+	}
+	return nil
+}
+
+// closeCommands leaves the palette: a "/…" filter typed inside the palette is
+// handed back to the composer (so esc never eats text), a plain draft is kept.
+func (m *Model) closeCommands() tea.Cmd {
+	filter := m.filter
+	m.filter = ""
+	m.overlay = overlayNone
+	m.syncFocus()
+	if strings.HasPrefix(filter, "/") && filter != "/" {
+		m.ta.SetValue(filter)
+		m.ta.CursorEnd()
 	}
 	return nil
 }
@@ -614,9 +703,8 @@ func (m *Model) runSlash(text string) (bool, tea.Cmd) {
 		m.doCompact()
 		return true, nil
 	case "/help":
-		m.blocks = append(m.blocks, block{kind: "info", label: "help", body:
-			"Commands: /api /models /sessions /new /compact /clear /help /exit\n" +
-				"Keys: enter send · shift+enter newline · ctrl+p commands · ctrl+o sessions · ctrl+x leader (q exit, m models, n new, l list, b sidebar) · f2 cycle model · esc interrupt"})
+		m.blocks = append(m.blocks, block{kind: "info", label: "help", body: "Commands: /api /models /sessions /new /compact /clear /help /exit\n" +
+			"Keys: enter send · shift+enter newline · ctrl+p commands · ctrl+o sessions · ctrl+x leader (q exit, m models, n new, l list, b sidebar) · f2 cycle model · esc interrupt"})
 		return true, m.scrollToBottom()
 	}
 	return false, nil
@@ -629,26 +717,9 @@ func (m *Model) runCommand(label string) tea.Cmd {
 }
 
 func (m *Model) runSlashCmd(name string) tea.Cmd {
-	switch name {
-	case "/exit":
-		m.quitting = true
-		return tea.Quit
-	case "/clear":
-		m.blocks = nil
-	case "/new":
-		m.newSession()
-	case "/models":
-		return m.fetchModels()
-	case "/api":
-		m.beginSetup()
-	case "/sessions":
-		return m.openSessions()
-	case "/compact":
-		m.doCompact()
-	case "/help":
-		m.blocks = append(m.blocks, block{kind: "info", label: "help", body: "See /help in the composer for the full list."})
-	}
-	return nil
+	// One dispatcher for slash + palette so both always behave identically.
+	_, cmd := m.runSlash(name)
+	return cmd
 }
 
 // ---- streaming transcript ----
@@ -661,6 +732,59 @@ func (m *Model) setStreamingText(text string) {
 	}
 	m.renderTranscript()
 	m.vp.GotoBottom()
+}
+
+// appendReasoning accumulates reasoning_content into the current turn's
+// thinking block (rendered collapsed; click expands it).
+func (m *Model) appendReasoning(delta string) {
+	if m.thinkIdx >= 0 && m.thinkIdx < len(m.blocks) && m.blocks[m.thinkIdx].kind == "thinking" {
+		m.blocks[m.thinkIdx].body += delta
+	} else {
+		m.blocks = append(m.blocks, block{kind: "thinking", label: "thinking", body: delta})
+		m.thinkIdx = len(m.blocks) - 1
+	}
+	m.renderTranscript()
+	m.vp.GotoBottom()
+}
+
+// handleMouse: wheel scrolls the transcript, clicks toggle thinking blocks,
+// clicks elsewhere hand focus to the composer.
+func (m *Model) handleMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
+	ev := tea.MouseEvent(msg)
+	if ev.IsWheel() {
+		if m.overlay != overlayNone && m.overlay != overlayPermission {
+			return m, nil // dialogs own the screen
+		}
+		switch msg.Button {
+		case tea.MouseButtonWheelUp:
+			m.vp.SetYOffset(m.vp.YOffset - 3)
+		case tea.MouseButtonWheelDown:
+			m.vp.SetYOffset(m.vp.YOffset + 3)
+		}
+		return m, nil
+	}
+	if msg.Action != tea.MouseActionPress || msg.Button != tea.MouseButtonLeft {
+		return m, nil
+	}
+	if m.overlay != overlayNone {
+		return m, nil // permission + dialogs are keyboard-driven
+	}
+	// Inside the transcript → hit-test the rendered line's block.
+	if msg.Y >= m.vpTop && msg.Y < m.vpTop+m.vpH &&
+		msg.X >= m.vpX0 && msg.X < m.vpX0+m.vpW {
+		line := m.vp.YOffset + (msg.Y - m.vpTop)
+		if line >= 0 && line < len(m.blockOfLine) {
+			bi := m.blockOfLine[line]
+			if bi >= 0 && bi < len(m.blocks) && m.blocks[bi].kind == "thinking" {
+				m.blocks[bi].expanded = !m.blocks[bi].expanded
+				m.renderTranscript()
+			}
+		}
+		return m, nil
+	}
+	// Click on the composer → focus it.
+	m.ta.Focus()
+	return m, nil
 }
 
 // AskApproval blocks the agent goroutine until the UI replies.
@@ -690,7 +814,7 @@ func Run(cfg *config.Config, cwd string) error {
 	if err != nil {
 		return err
 	}
-	prog = tea.NewProgram(m, tea.WithAltScreen())
+	prog = tea.NewProgram(m, tea.WithAltScreen(), tea.WithMouseCellMotion())
 	_, err = prog.Run()
 	return err
 }

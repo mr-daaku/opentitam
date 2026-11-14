@@ -118,6 +118,9 @@ type ChatRequest struct {
 type StreamEvent struct {
 	// DeltaText is incremental assistant text.
 	DeltaText string
+	// DeltaReasoning is incremental reasoning/thinking text
+	// (OpenAI-compatible `reasoning_content` delta).
+	DeltaReasoning string
 	// ToolCallDelta carries incremental tool call info (index-based merge).
 	ToolCallDelta *ToolCallDelta
 	// Done is true on [DONE].
@@ -127,9 +130,9 @@ type StreamEvent struct {
 }
 
 type ToolCallDelta struct {
-	Index    int
-	ID       string
-	Name     string
+	Index     int
+	ID        string
+	Name      string
 	Arguments string
 }
 
@@ -192,8 +195,9 @@ func parseChunk(data string) (StreamEvent, error) {
 	var chunk struct {
 		Choices []struct {
 			Delta struct {
-				Content   string `json:"content"`
-				ToolCalls []struct {
+				Content          string `json:"content"`
+				ReasoningContent string `json:"reasoning_content"`
+				ToolCalls        []struct {
 					Index    int    `json:"index"`
 					ID       string `json:"id"`
 					Function struct {
@@ -215,6 +219,9 @@ func parseChunk(data string) (StreamEvent, error) {
 	d := chunk.Choices[0].Delta
 	if d.Content != "" {
 		ev.DeltaText = d.Content
+	}
+	if d.ReasoningContent != "" {
+		ev.DeltaReasoning = d.ReasoningContent
 	}
 	for _, tc := range d.ToolCalls {
 		ev.ToolCallDelta = &ToolCallDelta{

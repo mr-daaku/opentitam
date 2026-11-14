@@ -18,12 +18,12 @@ func grepTool() *Tool {
 		Name:        "grep",
 		Description: "Search file contents with a regular expression (or literal text). Returns matching file paths, line numbers, and line previews. Narrow with path, include (glob), caseSensitive, and limit.",
 		Schema: funcSchema("", map[string]any{
-			"pattern":      strProp("Regular expression (set literal=true for exact text)"),
-			"path":         strProp("Directory or file to search (default: cwd)"),
-			"include":      strProp("Only search files matching this glob (e.g. *.go)"),
-			"literal":      map[string]any{"type": "boolean", "description": "Treat pattern as literal text, not regex (default false)"},
+			"pattern":       strProp("Regular expression (set literal=true for exact text)"),
+			"path":          strProp("Directory or file to search (default: cwd)"),
+			"include":       strProp("Only search files matching this glob (e.g. *.go)"),
+			"literal":       map[string]any{"type": "boolean", "description": "Treat pattern as literal text, not regex (default false)"},
 			"caseSensitive": map[string]any{"type": "boolean", "description": "Case-sensitive matching (default true)"},
-			"limit":        map[string]any{"type": "integer", "description": "Max matching lines (default 100)"},
+			"limit":         map[string]any{"type": "integer", "description": "Max matching lines (default 100)"},
 		}, []string{"pattern"}),
 		Execute: func(ctx context.Context, args json.RawMessage) (string, error) {
 			var in struct {

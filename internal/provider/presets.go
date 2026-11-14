@@ -15,11 +15,11 @@ import (
 // asked from the user; the base URL is stored locally. There is still NO
 // built-in model catalog — models always come from GET {baseURL}/models.
 type Preset struct {
-	Name         string // config key, e.g. "nvidia"
-	Label        string // display name
-	BaseURL      string
-	NeedsKey     bool   // false for local servers (Ollama, LM Studio)
-	Placeholder  string // example key format shown in the prompt
+	Name        string // config key, e.g. "nvidia"
+	Label       string // display name
+	BaseURL     string
+	NeedsKey    bool   // false for local servers (Ollama, LM Studio)
+	Placeholder string // example key format shown in the prompt
 }
 
 // Presets is the built-in provider menu (endpoints only — never models).

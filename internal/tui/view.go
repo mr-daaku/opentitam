@@ -34,11 +34,19 @@ func (m *Model) layout() {
 	}
 	w := m.width
 	if m.sidebarOn && w > 80 {
-		w -= 43 // sidebar 42 + 1 gap
+		w -= 42 // sidebar is exactly 42 cols
 	}
 	m.vp = viewport.New(maxInt(10, w), transcriptH)
 	m.vp.Style = lipgloss.NewStyle().Padding(0, 1)
 	m.ta.SetWidth(maxInt(20, m.width-6))
+
+	// viewport rect (screen coords) — used for mouse hit-testing.
+	m.vpTop = 1
+	m.vpH = transcriptH
+	m.vpX0 = 0
+	m.vpW = w
+
+	m.folder = readFolder(m.cwd)
 	m.renderTranscript()
 	m.vp.GotoBottom()
 }
@@ -68,12 +76,12 @@ func (m *Model) View() string {
 			lipgloss.NewStyle().Background(bgRaised).Foreground(textMuted).Render(right),
 	)
 
-	// 2. Body row: optional sidebar + transcript.
+	// 2. Body row: transcript (left) + optional sidebar (right).
 	transcript := m.vp.View()
 	body := transcript
 	if m.sidebarOn && m.width > 80 {
 		side := m.renderSidebar()
-		body = lipgloss.JoinHorizontal(lipgloss.Top, side, transcript)
+		body = lipgloss.JoinHorizontal(lipgloss.Top, transcript, side)
 	}
 
 	// 3. Permission stack (above composer, spec §8.4).
@@ -109,34 +117,99 @@ func (m *Model) View() string {
 
 	out := lipgloss.JoinVertical(lipgloss.Left, strip, body, permBlock, composer, footer)
 
-	// 6. Dialog overlays (rendered last → visually on top).
+	// 6. Modal overlays render on a PURE BLACK screen — transcript text can
+	// never bleed through or mis-align behind a dialog.
 	switch m.overlay {
 	case overlayModels, overlaySessions, overlayCommands, overlayProvider:
-		out = m.renderDialog(out)
+		out = m.renderDialog()
 	case overlayKey:
-		out = m.renderSetupKey(out)
+		out = m.renderSetupKey()
+	case overlayPermission:
+		out = m.centerOverlay(m.renderPermission())
 	}
 	return out
 }
 
-// renderSidebar is the 42-col session rail (spec §1.1).
+// renderSidebar is the right-hand info rail: session title, model, context,
+// folder details and the session list — everything the user should see.
 func (m *Model) renderSidebar() string {
 	var rows []string
-	rows = append(rows, styleAccent.Render(" ⌬ OpenTitam"), "")
+
+	// Header + version.
+	rows = append(rows,
+		lipgloss.JoinHorizontal(lipgloss.Top,
+			styleAccent.Render(" ⌬ OpenTitam"),
+			styleMuted.Render("  v"+Version),
+		), "")
+
+	// Session.
+	rows = append(rows, styleSideHead.Render(" ─ session "))
+	title := m.sess.Title
+	if title == "" {
+		title = "New session"
+	}
+	for _, l := range wrapText(title, 40) {
+		rows = append(rows, " "+l)
+	}
+	ctxTok, ctxPct := estimateContext(m.sess.Messages)
+	rows = append(rows, styleMuted.Render(fmt.Sprintf(" %d msgs · %s tok · %d%%",
+		len(m.sess.Messages), commaify(ctxTok), ctxPct)))
+	rows = append(rows, "")
+
+	// Model / provider.
+	rows = append(rows, styleSideHead.Render(" ─ model "))
+	rows = append(rows, " "+truncate(m.provider, 40))
+	rows = append(rows, styleMuted.Render(" "+truncate(orNone(m.modelID), 40)))
+	rows = append(rows, "")
+
+	// Folder details.
+	rows = append(rows, styleSideHead.Render(" ─ folder "))
+	if m.folder.err {
+		rows = append(rows, styleError.Render("  (unreadable)"))
+	} else {
+		for _, l := range wrapText(m.folder.path, 40) {
+			rows = append(rows, styleMuted.Render(" "+l))
+		}
+		rows = append(rows, fmt.Sprintf(" %s%d dirs · %d files",
+			styleMDBullet.Render("•"), m.folder.dirs, m.folder.files))
+		for _, e := range m.folder.entries {
+			rows = append(rows, styleMuted.Render("  "+truncate(e, 39)))
+		}
+		if m.folder.dirs+m.folder.files > len(m.folder.entries) {
+			rows = append(rows, styleMuted.Render(fmt.Sprintf("  … %d more",
+				m.folder.dirs+m.folder.files-len(m.folder.entries))))
+		}
+	}
+	rows = append(rows, "")
+
+	// Sessions.
+	rows = append(rows, styleSideHead.Render(" ─ sessions "))
 	items := sessionItems(m.store, m.sess.ID)
+	if len(items) == 0 {
+		rows = append(rows, styleMuted.Render("  (none)"))
+	}
 	for _, it := range items {
 		line := truncate(it, 39)
 		if strings.Contains(it, m.sess.ID) && m.sess.ID != "" {
 			rows = append(rows, styleSideSel.Render("┃"+line))
-		} else if it == "+ New session" {
-			rows = append(rows, styleMuted.Render("  "+line))
 		} else {
 			rows = append(rows, styleMuted.Render("  "+line))
 		}
 	}
-	rows = append(rows, "", styleMuted.Render("  v"+fmt.Sprint(0)+" · ctrl+x b"))
+
+	rows = append(rows, "", styleMuted.Render("  ctrl+x b hide · ctrl+p cmds"))
+
+	h := m.vpH
+	if h < 4 {
+		h = 4
+	}
+	// Never grow past the transcript height (keeps the screen from overflowing).
+	if len(rows) > h {
+		rows = rows[:h]
+	}
+
 	content := strings.Join(rows, "\n")
-	return styleSidebar.Height(m.height - 1).Render(content)
+	return styleSidebar.Height(h).Render(content)
 }
 
 // renderPermission is the bottom-stack approval prompt (spec §8.4).
@@ -171,8 +244,9 @@ func (m *Model) renderPermission() string {
 		Render(panel)
 }
 
-// renderDialog centers a DialogSelect-style panel (spec §8, widths 60/88).
-func (m *Model) renderDialog(body string) string {
+// renderDialog centers a DialogSelect-style panel (spec §8, widths 60/88)
+// on a pure black full-screen backdrop.
+func (m *Model) renderDialog() string {
 	width := 60
 	if m.overlay == overlayModels || m.overlay == overlaySessions {
 		width = 88
@@ -216,11 +290,11 @@ func (m *Model) renderDialog(body string) string {
 		Width(width).
 		Render(strings.Join(rows, "\n"))
 
-	return m.centerOverlay(body, panel)
+	return m.centerOverlay(panel)
 }
 
 // renderSetupKey is the API-key / custom base-URL input dialog (first-run setup).
-func (m *Model) renderSetupKey(body string) string {
+func (m *Model) renderSetupKey() string {
 	width := 64
 	if width > m.width-2 {
 		width = maxInt(20, m.width-2)
@@ -259,84 +333,112 @@ func (m *Model) renderSetupKey(body string) string {
 		Width(width).
 		Render(strings.Join(rows, "\n"))
 
-	return m.centerOverlay(body, panel)
+	return m.centerOverlay(panel)
 }
 
-// centerOverlay places panel in the middle of body.
-func (m *Model) centerOverlay(body, panel string) string {
-	bodyLines := strings.Split(body, "\n")
-	panLines := strings.Split(panel, "\n")
-	panW := lipgloss.Width(panel)
-	row := (m.height - len(panLines)) / 2
-	if row < 0 {
-		row = 0
+// centerOverlay places the panel dead-center on a PURE BLACK screen so no
+// transcript text can show through, mis-aligned or otherwise.
+func (m *Model) centerOverlay(panel string) string {
+	w, h := m.width, m.height
+	if w < 20 {
+		w = 20
 	}
-	col := (m.width - panW) / 2
-	if col < 0 {
-		col = 0
+	if h < 8 {
+		h = 8
 	}
-	for i, pl := range panLines {
-		r := row + i
-		for len(bodyLines) <= r {
-			bodyLines = append(bodyLines, "")
-		}
-		line := bodyLines[r]
-		left := clip(line, col)
-		right := ""
-		if idx := widthBy(line, col+panW); idx < len(line) {
-			right = line[idx:]
-		}
-		bodyLines[r] = left + pl + right
-	}
-	return strings.Join(bodyLines, "\n")
+	return lipgloss.Place(w, h, lipgloss.Center, lipgloss.Center, panel,
+		lipgloss.WithWhitespaceChars(" "),
+		lipgloss.WithWhitespaceBackground(bgBase),
+	)
 }
 
-// renderTranscript flattens blocks into viewport content (spec §4, §5).
+// renderTranscript flattens blocks into viewport content (spec §4, §5) and
+// records which block each rendered line belongs to (mouse hit-testing).
 func (m *Model) renderTranscript() {
-	var b strings.Builder
-	for _, blk := range m.blocks {
+	var lines []string
+	var owner []int
+	add := func(bi int, s string) {
+		for _, l := range strings.Split(s, "\n") {
+			lines = append(lines, l)
+			owner = append(owner, bi)
+		}
+	}
+
+	for bi, blk := range m.blocks {
 		switch blk.kind {
 		case "user":
 			// User message: ┃ left border + raised bg (spec §4.1).
 			for i, line := range strings.Split(blk.body, "\n") {
 				if i == 0 {
-					b.WriteString(styleUserBody.Render("┃ "+line) + "\n")
+					add(bi, styleUserBody.Render("┃ "+line))
 				} else {
-					b.WriteString(styleUserBody.Render("  "+line) + "\n")
+					add(bi, styleUserBody.Render("  "+line))
 				}
 			}
-			b.WriteString("\n")
+			add(bi, "")
 		case "assistant":
-			b.WriteString(indent(blk.body, "  ") + "\n\n")
+			add(bi, indent(renderMarkdown(blk.body), "  "))
+			add(bi, "")
 		case "streaming":
 			sp := spinFrames[m.spinFrame%len(spinFrames)]
-			b.WriteString(styleMuted.Render("  "+sp+" ") + strings.ReplaceAll(indent(blk.body, "  "), "\n", "\n") + "\n\n")
+			head := styleMuted.Render("  " + sp + " ")
+			body := indent(renderMarkdown(blk.body), "  ")
+			first, rest, _ := strings.Cut(body, "\n")
+			add(bi, head+first)
+			if rest != "" {
+				for _, l := range strings.Split(rest, "\n") {
+					add(bi, l)
+				}
+			}
+			add(bi, "")
+		case "thinking":
+			// Hidden by default — one dim line; click expands (spec: think
+			// shows only on click).
+			if blk.expanded {
+				add(bi, styleThinkHead.Render("  ▾ thinking"))
+				for _, l := range strings.Split(blk.body, "\n") {
+					add(bi, styleThinkBody.Render("    "+truncate(l, 200)))
+				}
+				add(bi, "")
+			} else {
+				n := len(strings.Split(blk.body, "\n"))
+				add(bi, styleThinkIdle.Render(
+					fmt.Sprintf("  ▸ thinking · %d line(s) · click to expand", n)))
+				add(bi, "")
+			}
 		case "footer":
-			b.WriteString(styleMuted.Render("  "+blk.body) + "\n\n")
+			add(bi, styleMuted.Render("  "+blk.body))
+			add(bi, "")
 		case "tool_start":
 			icon := styleMuted.Render("⠋ ")
 			if !blk.pending {
 				icon = styleToolOK.Render("✓ ")
 			}
-			b.WriteString("  " + icon + styleToolLabel.Render(blk.label) + " " + styleMuted.Render(truncate(blk.body, 100)) + "\n\n")
+			add(bi, "  "+icon+styleToolLabel.Render(blk.label)+" "+styleMuted.Render(truncate(blk.body, 100)))
+			add(bi, "")
 		case "tool_end":
 			icon := styleToolOK.Render("✓")
 			if strings.HasPrefix(blk.body, "✗") {
 				icon = styleToolErr.Render("✗")
 			}
-			lines := strings.SplitN(blk.body, "\n", 2)
-			b.WriteString("  " + icon + " " + styleToolLabel.Render(blk.label) + "\n")
-			if len(lines) > 1 && strings.TrimSpace(lines[1]) != "" {
-				b.WriteString(indent(lines[1], "    ") + "\n")
+			lines2 := strings.SplitN(blk.body, "\n", 2)
+			add(bi, "  "+icon+" "+styleToolLabel.Render(blk.label))
+			if len(lines2) > 1 && strings.TrimSpace(lines2[1]) != "" {
+				add(bi, indent(lines2[1], "    "))
 			}
-			b.WriteString("\n")
+			add(bi, "")
 		case "error":
-			b.WriteString("  " + styleError.Render("✗ "+blk.label) + "\n" + indent(blk.body, "    ") + "\n\n")
+			add(bi, "  "+styleError.Render("✗ "+blk.label))
+			add(bi, indent(blk.body, "    "))
+			add(bi, "")
 		case "info":
-			b.WriteString(styleMuted.Render("  · "+blk.label) + "\n" + indent(blk.body, "    ") + "\n\n")
+			add(bi, styleMuted.Render("  · "+blk.label))
+			add(bi, indent(blk.body, "    "))
+			add(bi, "")
 		}
 	}
-	m.vp.SetContent(b.String())
+	m.blockOfLine = owner
+	m.vp.SetContent(strings.Join(lines, "\n"))
 }
 
 func (m *Model) scrollToBottom() tea.Cmd {
@@ -408,10 +510,17 @@ func sessionIDFromItem(item string) string {
 	return fields[len(fields)-1]
 }
 
-func filterSlash(prefix string) []string {
+// filterCommands filters the palette list: "" shows every command with its
+// key hints; a typed prefix matches bare command names (with or without "/").
+func filterCommands(prefix string) []string {
+	if prefix == "" {
+		return allCommands()
+	}
+	want := strings.TrimPrefix(prefix, "/")
 	var out []string
 	for _, c := range slashList() {
-		if strings.HasPrefix(c, prefix) {
+		name := strings.TrimPrefix(c, "/")
+		if strings.HasPrefix(c, prefix) || strings.HasPrefix(name, want) {
 			out = append(out, c)
 		}
 	}
@@ -470,25 +579,30 @@ func minInt(a, b int) int {
 	return b
 }
 
-func clip(s string, n int) string {
-	r := []rune(s)
-	if len(r) <= n {
-		return s
+// wrapText breaks s into lines of at most n display cells (word-aware).
+func wrapText(s string, n int) []string {
+	if n < 4 {
+		n = 4
 	}
-	return string(r[:n])
-}
-
-// widthBy returns byte index where display width reaches w (approx: 1 cell/rune).
-func widthBy(s string, w int) int {
-	if w <= 0 {
-		return 0
+	words := strings.Fields(s)
+	if len(words) == 0 {
+		return []string{""}
 	}
-	count := 0
-	for i := range s {
-		if count == w {
-			return i
+	var out []string
+	cur := ""
+	for _, w := range words {
+		switch {
+		case cur == "":
+			cur = w
+		case len(cur)+1+len(w) <= n:
+			cur += " " + w
+		default:
+			out = append(out, cur)
+			cur = w
 		}
-		count++
 	}
-	return len(s)
+	if cur != "" {
+		out = append(out, cur)
+	}
+	return out
 }

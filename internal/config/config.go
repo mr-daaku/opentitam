@@ -37,9 +37,9 @@ type Permission struct {
 
 // Config is the merged result of all configuration files.
 type Config struct {
-	Schema string               `json:"$schema,omitempty"`
-	Model  string               `json:"model,omitempty"`
-	Shell  string               `json:"shell,omitempty"`
+	Schema string `json:"$schema,omitempty"`
+	Model  string `json:"model,omitempty"`
+	Shell  string `json:"shell,omitempty"`
 	// Providers maps provider name → endpoint config (baseURL + apiKey only).
 	Providers map[string]Provider `json:"providers,omitempty"`
 	// Permissions are ordered rules; last match wins.
