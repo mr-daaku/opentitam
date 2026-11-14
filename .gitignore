@@ -20,5 +20,8 @@ opentitam.json
 .opentitam.json
 *.local.json
 
+# runtime state (sessions db created by older builds)
+.opentitam/
+
 # logs
 *.log
