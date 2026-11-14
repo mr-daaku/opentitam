@@ -1,6 +1,6 @@
-# binaries
-opentitam
-opentitam.exe
+# binaries (root-level only — must NOT match cmd/opentitam/ source dir)
+/opentitam
+/opentitam.exe
 *.exe
 *.test
 *.out
