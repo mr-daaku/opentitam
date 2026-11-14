@@ -1,0 +1,24 @@
+# binaries
+opentitam
+opentitam.exe
+*.exe
+*.test
+*.out
+
+# go
+go.work
+go.work.sum
+
+# editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# local config / secrets
+opentitam.json
+.opentitam.json
+*.local.json
+
+# logs
+*.log
