@@ -109,8 +109,29 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.sel = 0
 		return m, nil
 
+	case apiTestMsg:
+		m.testing = false
+		m.status = "ready"
+		if msg.err != nil {
+			// FAILED — nothing is saved; let the user fix the key and retry.
+			m.setupErr = msg.err.Error()
+			m.overlay = overlayKey
+			m.setupMode = "key"
+			m.setupBase = msg.baseURL
+			m.setupPreset, _ = provider.FindPreset(msg.preset)
+			m.keyInput.SetValue(msg.key)
+			return m, nil
+		}
+		if err := m.applyProvider(msg.preset, msg.baseURL, msg.key, msg.res); err != nil {
+			m.setupErr = "save failed: " + err.Error()
+			m.overlay = overlayKey
+			m.setupMode = "key"
+			return m, nil
+		}
+		return m, nil
+
 	case tickMsg:
-		if m.streaming {
+		if m.streaming || m.testing {
 			m.spinFrame = (m.spinFrame + 1) % len(spinFrames)
 			return m, tea.Tick(80*time.Millisecond, func(t time.Time) tea.Msg { return tickMsg(t) })
 		}
@@ -145,6 +166,11 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil // unknown chord: swallow
 	}
 
+	// First-run setup: API key / custom base URL input.
+	if m.overlay == overlayKey {
+		return m.handleSetupKey(msg)
+	}
+
 	// Permission overlay: full selection UI + y/a/n shortcuts.
 	if m.overlay == overlayPermission {
 		return m.handlePermKey(msg)
@@ -154,6 +180,10 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	if m.overlay != overlayNone {
 		switch k {
 		case "esc", "ctrl+c":
+			// First run: provider setup cannot be dismissed (nothing configured).
+			if len(m.cfg.Providers) == 0 && (m.overlay == overlayProvider || m.overlay == overlayKey) {
+				return m, nil
+			}
 			m.overlay = overlayNone
 			return m, nil
 		case "up", "ctrl+k":
@@ -298,6 +328,61 @@ func (m *Model) replyPerm(decision string) {
 	m.overlay = overlayNone
 }
 
+// handleSetupKey drives the first-run provider/key overlay.
+func (m *Model) handleSetupKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	if m.testing {
+		return m, nil // test in flight — swallow keys
+	}
+	switch msg.String() {
+	case "esc":
+		if m.setupMode == "key" && m.setupPreset.Name == "custom" && m.keyInput.Value() == "" {
+			// go back to base-URL entry
+			m.setupMode = "base"
+			m.setupErr = ""
+			m.keyInput.Reset()
+			m.keyInput.Placeholder = "https://api.example.com/v1"
+			return m, nil
+		}
+		// If a provider already exists, close; otherwise stay in setup.
+		if len(m.cfg.Providers) > 0 {
+			m.overlay = overlayNone
+		} else {
+			m.beginSetup()
+		}
+		return m, nil
+	case "enter":
+		val := strings.TrimSpace(m.keyInput.Value())
+		if m.setupMode == "base" {
+			if val == "" {
+				m.setupErr = "base URL is required"
+				return m, nil
+			}
+			m.setupBase = strings.TrimRight(val, "/")
+			m.setupMode = "key"
+			m.setupErr = ""
+			m.keyInput.Reset()
+			m.keyInput.Placeholder = "paste your API key, then press enter"
+			return m, nil
+		}
+		// key mode → run the test (never save before it passes)
+		if m.setupPreset.NeedsKey && val == "" {
+			m.setupErr = "API key is required"
+			return m, nil
+		}
+		key := val
+		if !m.setupPreset.NeedsKey {
+			key = ""
+		}
+		m.testing = true
+		m.setupErr = ""
+		m.status = "testing…"
+		return m, tea.Batch(m.runAPITest(m.setupPreset.Name, m.setupBase, key), tickOnce())
+	}
+	var cmd tea.Cmd
+	m.keyInput, cmd = m.keyInput.Update(msg)
+	return m, cmd
+}
+
 // ---- actions ----
 
 func (m *Model) submit() (tea.Model, tea.Cmd) {
@@ -315,7 +400,12 @@ func (m *Model) submit() (tea.Model, tea.Cmd) {
 		}
 	}
 
-	if m.modelID == "" {
+	// First run / no provider yet: open setup instead of crashing.
+	if m.agent == nil || m.client == nil || m.modelID == "" {
+		if m.agent == nil || m.client == nil {
+			m.beginSetup()
+			return m, nil
+		}
 		m.blocks = append(m.blocks, block{kind: "error", label: "error", body: "No model selected. Press ctrl+p → models (or leader x m)."})
 		return m, m.scrollToBottom()
 	}
@@ -387,6 +477,10 @@ func (m *Model) fetchModels() tea.Cmd {
 	if m.streaming {
 		return nil
 	}
+	if m.client == nil || m.client.BaseURL == "" {
+		m.beginSetup()
+		return nil
+	}
 	client := m.client
 	ctx := m.ctx
 	m.status = "loading models…"
@@ -434,6 +528,38 @@ func (m *Model) selectItem() tea.Cmd {
 	}
 	item := m.items[m.sel]
 	switch m.overlay {
+	case overlayProvider:
+		presets := provider.Presets()
+		if m.sel >= len(presets) {
+			m.overlay = overlayNone
+			return nil
+		}
+		p := presets[m.sel]
+		m.setupPreset = p
+		m.setupErr = ""
+		if p.Name == "custom" {
+			m.overlay = overlayKey
+			m.setupMode = "base"
+			m.setupBase = ""
+			m.keyInput.Reset()
+			m.keyInput.Placeholder = "https://api.example.com/v1"
+		} else if p.NeedsKey {
+			m.overlay = overlayKey
+			m.setupMode = "key"
+			m.setupBase = p.BaseURL
+			m.keyInput.Reset()
+			ph := "paste your API key, then press enter"
+			if p.Placeholder != "" {
+				ph = p.Placeholder + " — paste key, press enter"
+			}
+			m.keyInput.Placeholder = ph
+		} else {
+			// Local server: no key needed — test immediately.
+			m.testing = true
+			m.status = "testing…"
+			return tea.Batch(m.runAPITest(p.Name, p.BaseURL, ""), tickOnce())
+		}
+		return nil
 	case overlayModels:
 		m.applyModel(item)
 		m.overlay = overlayNone
@@ -479,6 +605,9 @@ func (m *Model) runSlash(text string) (bool, tea.Cmd) {
 		return true, nil
 	case "/models":
 		return true, m.fetchModels()
+	case "/api":
+		m.beginSetup()
+		return true, nil
 	case "/sessions":
 		return true, m.openSessions()
 	case "/compact":
@@ -486,7 +615,7 @@ func (m *Model) runSlash(text string) (bool, tea.Cmd) {
 		return true, nil
 	case "/help":
 		m.blocks = append(m.blocks, block{kind: "info", label: "help", body:
-			"Commands: /models /sessions /new /compact /clear /help /exit\n" +
+			"Commands: /api /models /sessions /new /compact /clear /help /exit\n" +
 				"Keys: enter send · shift+enter newline · ctrl+p commands · ctrl+o sessions · ctrl+x leader (q exit, m models, n new, l list, b sidebar) · f2 cycle model · esc interrupt"})
 		return true, m.scrollToBottom()
 	}
@@ -510,6 +639,8 @@ func (m *Model) runSlashCmd(name string) tea.Cmd {
 		m.newSession()
 	case "/models":
 		return m.fetchModels()
+	case "/api":
+		m.beginSetup()
 	case "/sessions":
 		return m.openSessions()
 	case "/compact":
@@ -541,6 +672,11 @@ func (m *Model) AskApproval(action, resource, command string) string {
 
 // send delivers a message from goroutines.
 var prog *tea.Program
+
+// tickOnce starts the spinner tick loop (streaming or API testing).
+func tickOnce() tea.Cmd {
+	return tea.Tick(80*time.Millisecond, func(t time.Time) tea.Msg { return tickMsg(t) })
+}
 
 func send(msg tea.Msg) {
 	if prog != nil {

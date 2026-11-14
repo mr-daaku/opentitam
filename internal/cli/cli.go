@@ -14,6 +14,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/mr-daaku/opentitam/internal/config"
 	"github.com/mr-daaku/opentitam/internal/permissions"
@@ -21,7 +22,7 @@ import (
 	"github.com/mr-daaku/opentitam/internal/tools"
 )
 
-const Version = "0.1.0"
+const Version = "0.2.0"
 
 // Execute is the CLI entry point.
 func Execute(args []string) int {
@@ -33,8 +34,11 @@ func Execute(args []string) int {
 		return runOnce(args[1:])
 	case "models":
 		return runModels(args[1:])
+	case "api":
+		return runAPI(args[1:])
 	case "setup":
-		return runSetup(args[1:])
+		// `setup` is kept as an alias of `api set`.
+		return runAPI(append([]string{"set"}, args[1:]...))
 	case "version", "--version", "-v":
 		fmt.Printf("opentitam %s\n", Version)
 		return 0
@@ -54,16 +58,21 @@ USAGE
   opentitam                    Launch the TUI in the current directory
   opentitam <directory>        Launch the TUI in a directory
   opentitam run "<prompt>"     Run one prompt headlessly and print the reply
-  opentitam models             List models fetched from your providers
-  opentitam setup              Configure provider (base URL + API key) and fetch models
+  opentitam api                Show current provider + model
+  opentitam api set [name]     Add provider: paste key → tested → saved only if OK
+  opentitam api test           Re-test the saved provider
+  opentitam models             Fetch models (saves list) and choose the default
   opentitam version            Print version
+
+PRESETS (api set)
+  nvidia openai deepseek openrouter groq mistral together github ollama lmstudio custom
 
 CONFIG
   Global : ~/.config/opentitam/opentitam.json
   Project: <repo>/opentitam.json or <repo>/.opencode/opentitam.json
 
   Providers have only baseURL + apiKey — there is NO built-in model catalog.
-  Models are loaded from GET {baseURL}/models.
+  Models are loaded from GET {baseURL}/models and saved into config.
 `)
 }
 
@@ -111,7 +120,8 @@ func buildPerms(cfg *config.Config) *permissions.Engine {
 	return permissions.New(cfg.Permissions)
 }
 
-// runModels prints dynamically loaded models from every provider.
+// runModels fetches models from every provider (dynamic), SAVES the lists into
+// config, and interactively lets the user choose the default model.
 func runModels(args []string) int {
 	cfg, err := config.Load(cwd())
 	if err != nil {
@@ -119,12 +129,17 @@ func runModels(args []string) int {
 		return 1
 	}
 	if len(cfg.Providers) == 0 {
-		fmt.Fprintln(os.Stderr, "No providers configured. Run `opentitam setup` first.")
+		fmt.Fprintln(os.Stderr, "No providers configured. Run `opentitam api set` first.")
 		return 1
 	}
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
+	defer cancel()
+
+	interactive := isInteractive()
+	changed := false
 	exit := 0
 	names := sortedKeys(cfg.Providers)
+	all := map[string][]string{} // provider → model ids (for the picker)
 	for _, name := range names {
 		p := cfg.Providers[name]
 		c := provider.NewClient(name, p.BaseURL, p.APIKey)
@@ -134,19 +149,101 @@ func runModels(args []string) int {
 			exit = 1
 			continue
 		}
+		ids := modelIDs(models)
+		all[name] = ids
+		// Persist the freshly fetched list ("jo hoga wo save ho jayega").
+		p.Models = ids
+		cfg.Providers[name] = p
+		changed = true
+
 		fmt.Printf("[%s] %s — %d model(s)\n", name, p.BaseURL, len(models))
-		if len(p.Models) > 0 {
-			fmt.Println("  (manual model list in config overrides endpoint)")
-		}
-		for _, m := range models {
+		for _, id := range ids {
 			mark := "  "
-			if cfg.Model == name+"/"+m.ID {
+			if cfg.Model == name+"/"+id {
 				mark = "* "
 			}
-			fmt.Printf("%s%s/%s\n", mark, name, m.ID)
+			fmt.Printf("%s%s/%s\n", mark, name, id)
+		}
+	}
+	if changed {
+		if err := config.SaveGlobal(cfg); err != nil {
+			fmt.Fprintln(os.Stderr, "cannot save config:", err)
+			return 1
+		}
+		fmt.Println("\n(model lists saved to config)")
+	}
+
+	// Choose which model to USE — saved too ("jo use karna hai wo bhi save").
+	if interactive && exit == 0 {
+		fmt.Printf("\nSet default model [enter keeps %q]: ", cfg.Model)
+		line, _ := readLine()
+		line = strings.TrimSpace(line)
+		if line != "" {
+			// Accept "provider/model", bare id (single provider), or "provider model".
+			line = strings.ReplaceAll(line, " ", "/")
+			chosen := ""
+			if strings.Contains(line, "/") {
+				if pname, rest, ok := strings.Cut(line, "/"); ok {
+					ids, ok := all[pname]
+					if !ok {
+						fmt.Fprintf(os.Stderr, "provider %q not configured\n", pname)
+						return 1
+					}
+					for _, id := range ids {
+						if id == rest {
+							chosen = pname + "/" + rest
+						}
+					}
+					if chosen == "" {
+						fmt.Fprintf(os.Stderr, "model %q not found on provider %q\n", rest, pname)
+						return 1
+					}
+				}
+			} else {
+				// Bare id: find it across providers.
+				for pname, ids := range all {
+					for _, id := range ids {
+						if id == line {
+							chosen = pname + "/" + line
+							break
+						}
+					}
+					if chosen != "" {
+						break
+					}
+				}
+				if chosen == "" {
+					fmt.Fprintf(os.Stderr, "model %q not found on any provider\n", line)
+					return 1
+				}
+			}
+			cfg.Model = chosen
+			if err := config.SaveGlobal(cfg); err != nil {
+				fmt.Fprintln(os.Stderr, "cannot save config:", err)
+				return 1
+			}
+			fmt.Printf("Default model saved: %s\n", chosen)
 		}
 	}
 	return exit
+}
+
+// readLine reads one trimmed line from stdin; on empty input returns "".
+func readLine() (string, error) {
+	var line string
+	if _, err := fmt.Fscanln(os.Stdin, &line); err != nil {
+		return "", nil // empty line (just enter)
+	}
+	return strings.TrimSpace(line), nil
+}
+
+// isInteractive reports whether stdin is a terminal.
+func isInteractive() bool {
+	st, err := os.Stdin.Stat()
+	if err != nil {
+		return false
+	}
+	return st.Mode()&os.ModeCharDevice != 0
 }
 
 func sortedKeys(m map[string]config.Provider) []string {

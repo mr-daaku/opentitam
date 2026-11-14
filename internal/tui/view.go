@@ -111,8 +111,10 @@ func (m *Model) View() string {
 
 	// 6. Dialog overlays (rendered last → visually on top).
 	switch m.overlay {
-	case overlayModels, overlaySessions, overlayCommands:
+	case overlayModels, overlaySessions, overlayCommands, overlayProvider:
 		out = m.renderDialog(out)
+	case overlayKey:
+		out = m.renderSetupKey(out)
 	}
 	return out
 }
@@ -214,7 +216,54 @@ func (m *Model) renderDialog(body string) string {
 		Width(width).
 		Render(strings.Join(rows, "\n"))
 
-	// Center over body.
+	return m.centerOverlay(body, panel)
+}
+
+// renderSetupKey is the API-key / custom base-URL input dialog (first-run setup).
+func (m *Model) renderSetupKey(body string) string {
+	width := 64
+	if width > m.width-2 {
+		width = maxInt(20, m.width-2)
+	}
+	title := "API key"
+	sub := m.setupPreset.Label
+	if m.setupMode == "base" {
+		title = "Base URL"
+		sub = m.setupPreset.Label + " — enter the OpenAI-compatible endpoint"
+	} else if m.setupBase != "" {
+		sub += " · " + m.setupBase
+	}
+	m.keyInput.SetWidth(maxInt(20, width-8))
+
+	rows := []string{
+		styleDialogTitle.Render(title),
+		styleMuted.Render(truncate(sub, width-8)),
+		"",
+		m.keyInput.View(),
+	}
+	if m.setupErr != "" {
+		rows = append(rows, "", styleError.Render("✗ "+truncate(m.setupErr, width-8)))
+	}
+	if m.testing {
+		sp := spinFrames[m.spinFrame%len(spinFrames)]
+		rows = append(rows, "", styleMuted.Render(sp+" testing endpoint + chat — nothing is saved until it passes"))
+	} else {
+		hint := "enter confirm · esc back"
+		if len(m.cfg.Providers) == 0 {
+			hint = "enter confirm · esc back (setup required on first run)"
+		}
+		rows = append(rows, "", styleFooterHint.Render(hint))
+	}
+
+	panel := styleDialog.
+		Width(width).
+		Render(strings.Join(rows, "\n"))
+
+	return m.centerOverlay(body, panel)
+}
+
+// centerOverlay places panel in the middle of body.
+func (m *Model) centerOverlay(body, panel string) string {
 	bodyLines := strings.Split(body, "\n")
 	panLines := strings.Split(panel, "\n")
 	panW := lipgloss.Width(panel)
@@ -371,7 +420,7 @@ func filterSlash(prefix string) []string {
 
 func slashList() []string {
 	return []string{
-		"/clear", "/compact", "/exit", "/help", "/models", "/new", "/sessions",
+		"/api", "/clear", "/compact", "/exit", "/help", "/models", "/new", "/sessions",
 	}
 }
 
@@ -380,6 +429,7 @@ func allCommands() []string {
 		"/new      ctrl+x n",
 		"/sessions ctrl+x l",
 		"/models   ctrl+x m",
+		"/api      (provider setup)",
 		"/compact  ctrl+x c",
 		"/clear",
 		"/help",
